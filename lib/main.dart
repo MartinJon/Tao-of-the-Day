@@ -182,15 +182,16 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         return; // Success - exit the retry loop
       } catch (e) {
         print('❌ Attempt $attempt failed: $e');
+
         if (attempt == retries) {
+          // Final attempt failed
           setState(() {
             _hasError = true;
             _isLoading = false;
           });
-          _showErrorDialog(
-            'Failed to load Tao data after $retries attempts. Using fallback data.',
-            isRetryable: true,
-          );
+
+          // Show user-friendly error
+          _showNetworkErrorDialog();
         } else {
           print('⏳ Waiting ${attempt * 2} seconds before retry...');
           await Future.delayed(Duration(seconds: attempt * 2));
@@ -228,7 +229,53 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       rethrow;
     }
   }
+  void _showNetworkErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
+        return AlertDialog(
+          title: Text(
+              'Connection Issue',
+              style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                  Icons.wifi_off,
+                  size: 50,
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)
+              ),
+              SizedBox(height: 16),
+              Text(
+                "Can't connect to Tao data. This could be due to:\n\n"
+                    "• Network connectivity issues\n"
+                    "• Firewall blocking the connection\n"
+                    "• Temporary server problems\n\n"
+                    "The app will use sample data instead.",
+                textAlign: TextAlign.left,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _fetchTaoDataWithRetry(); // Retry
+              },
+              child: Text('Retry'),
+            ),
+          ],
+        );
+      },
+    );
+  }
   void _processTsvData(String tsvData) {
     try {
       print('🔄 Processing TSV data...');
@@ -276,19 +323,39 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
   }
 
   void _showFallbackData() {
+    print('🔄 Using comprehensive fallback data');
+
     final List<TaoData> fallbackData = [];
 
     for (int i = 1; i <= 81; i++) {
       fallbackData.add(TaoData(
         number: i,
         title: 'Tao Chapter $i',
-        text: 'This is sample text for Tao $i. The Tao that can be told is not the eternal Tao. The name that can be named is not the eternal name.',
-        notes: 'Sample notes for Tao $i. This is fallback data.',
+        text: _getFallbackTaoText(i),
+        notes: 'Sample notes for Tao $i. This is fallback data while we resolve connection issues.',
         audio1: '',
         audio2: '',
         audio3: '',
       ));
     }
+
+    setState(() {
+      _taoDataList = fallbackData;
+      _isLoading = false;
+      _hasError = false; // Don't show error since we have fallback
+    });
+  }
+
+  String _getFallbackTaoText(int chapter) {
+    // Add a few sample texts for key chapters
+    final samples = {
+      1: 'The Tao that can be told is not the eternal Tao. The name that can be named is not the eternal name.',
+      2: 'When people see some things as beautiful, other things become ugly. When people see some things as good, other things become bad.',
+      81: 'True words aren\'t eloquent; eloquent words aren\'t true. Wise men don\'t need to prove their point; men who need to prove their point aren\'t wise.',
+    };
+
+    return samples[chapter] ?? 'The Tao Te Ching teaches us about the natural way of the universe. Chapter $chapter offers wisdom about harmony and balance.';
+  }
 
     setState(() {
       _taoDataList = fallbackData;
