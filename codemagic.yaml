@@ -1,28 +1,19 @@
-# codemagic.yaml
-workflows:
+﻿workflows:
   flutter-app:
-    name: Build APK & AAB
+    name: Build Android APK & iOS
     environment:
-      groups:
-      # Add your App Store Connect API key here later
-      vars:
-        XCODE_WORKSPACE: "Runner.xcworkspace" # For iOS
-        XCODE_SCHEME: "Runner" # For iOS
       flutter: stable
     scripts:
-      - name: Get Flutter packages
+      - name: Get packages
         script: flutter pub get
       - name: Build Android APK
         script: flutter build apk --release
-      - name: Build Android AAB
-        script: flutter build appbundle --release
       - name: Build iOS
         script: flutter build ios --release --no-codesign
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
-      - build/app/outputs/bundle/release/app-release.aab
       - build/ios/ipa/*.ipa
     publishing:
       email:
         recipients:
-          - mjongarcia@gmail.com  # Changed to your actual email
+          - mjongarcia@gmail.com
