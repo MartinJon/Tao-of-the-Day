@@ -1,6 +1,4 @@
 //cd "C:\Users\MartinJon\AndroidStudioProjects\tao_of_the_day_app"
-
-
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -11,8 +9,6 @@ import 'package:csv/csv.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'menu_dialogs.dart';
 import 'audio_player.dart';
-import 'package:http/http.dart' as http;
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -182,15 +178,11 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         return; // Success - exit the retry loop
       } catch (e) {
         print('❌ Attempt $attempt failed: $e');
-
         if (attempt == retries) {
-          // Final attempt failed
           setState(() {
             _hasError = true;
             _isLoading = false;
           });
-
-          // Show user-friendly error
           _showNetworkErrorDialog();
         } else {
           print('⏳ Waiting ${attempt * 2} seconds before retry...');
@@ -229,53 +221,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       rethrow;
     }
   }
-  void _showNetworkErrorDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-        return AlertDialog(
-          title: Text(
-              'Connection Issue',
-              style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                  Icons.wifi_off,
-                  size: 50,
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)
-              ),
-              SizedBox(height: 16),
-              Text(
-                "Can't connect to Tao data. This could be due to:\n\n"
-                    "• Network connectivity issues\n"
-                    "• Firewall blocking the connection\n"
-                    "• Temporary server problems\n\n"
-                    "The app will use sample data instead.",
-                textAlign: TextAlign.left,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _fetchTaoDataWithRetry(); // Retry
-              },
-              child: Text('Retry'),
-            ),
-          ],
-        );
-      },
-    );
-  }
   void _processTsvData(String tsvData) {
     try {
       print('🔄 Processing TSV data...');
@@ -298,7 +244,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         final row = line.split('\t');
 
         if (row.isNotEmpty) {
-          final taoData = TaoData.fromCsv(row); // We'll update this method to handle TSV
+          final taoData = TaoData.fromCsv(row);
           if (taoData.number > 0) {
             taoDataList.add(taoData);
           }
@@ -342,12 +288,11 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     setState(() {
       _taoDataList = fallbackData;
       _isLoading = false;
-      _hasError = false; // Don't show error since we have fallback
+      _hasError = false;
     });
   }
 
   String _getFallbackTaoText(int chapter) {
-    // Add a few sample texts for key chapters
     final samples = {
       1: 'The Tao that can be told is not the eternal Tao. The name that can be named is not the eternal name.',
       2: 'When people see some things as beautiful, other things become ugly. When people see some things as good, other things become bad.',
@@ -357,10 +302,52 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     return samples[chapter] ?? 'The Tao Te Ching teaches us about the natural way of the universe. Chapter $chapter offers wisdom about harmony and balance.';
   }
 
-    setState(() {
-      _taoDataList = fallbackData;
-      _isLoading = false;
-    });
+  void _showNetworkErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        return AlertDialog(
+          title: Text(
+              'Connection Issue',
+              style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                  Icons.wifi_off,
+                  size: 50,
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)
+              ),
+              SizedBox(height: 16),
+              Text(
+                "Can't connect to Tao data. This could be due to:\n\n"
+                    "• Network connectivity issues\n"
+                    "• Firewall blocking the connection\n"
+                    "• Temporary server problems\n\n"
+                    "The app will use sample data instead.",
+                textAlign: TextAlign.left,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _fetchTaoDataWithRetry();
+              },
+              child: Text('Retry'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<bool> _canSelectNewNumber() async {
@@ -495,7 +482,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         title: const Text('Tao of the Day'),
         backgroundColor: isDarkMode ? const Color(0xFF5C1A00) : const Color(0xFF7E1A00),
         actions: [
-          MenuDialogs.buildMenuButton(context), // ← Add this line
+          MenuDialogs.buildMenuButton(context),
         ],
       ),
       body: Padding(
@@ -544,7 +531,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           ),
           const SizedBox(height: 20),
 
-          // Super Minimal - Just Numbers
+          // Number selector
           Container(
             height: 50,
             child: ListView(
@@ -568,7 +555,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                         fontSize: isSelected ? 40 : 24,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
-                            ? (isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00)) // ← FIXED
+                            ? (isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00))
                             : (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFD45C33)),
                       ),
                     ),
@@ -579,18 +566,14 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           ),
           const SizedBox(height: 50),
 
-          // Selection indicator with instructions
-          Column(
-            children: [
-              Text(
-                'Swipe horizontally',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                  fontSize: 15,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
+          // Instructions
+          Text(
+            'Swipe horizontally',
+            style: TextStyle(
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+            ),
           ),
           const SizedBox(height: 20),
 
@@ -613,6 +596,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
             ],
           ),
 
+          // Daily limit message
           if (!_isButtonEnabled) ...[
             const SizedBox(height: 20),
             Container(
@@ -629,6 +613,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
               ),
             ),
           ],
+
+          // Debug widget
           if (!_isLoading && _taoDataList.isNotEmpty) ...[
             const SizedBox(height: 20),
             Container(
