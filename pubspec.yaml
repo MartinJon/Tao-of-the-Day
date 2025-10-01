@@ -1,0 +1,42 @@
+name: tao_app_fixed
+description: "Tao of the Day App"
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  intl: ^0.19.0
+  shared_preferences: ^2.2.2
+  audioplayers: ^5.2.1
+  csv: ^5.0.3
+  url_launcher: ^6.1.11
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_native_splash: ^2.3.3
+  flutter_launcher_icons: ^0.13.1
+
+# ADD THIS SECTION for splash screen
+flutter_native_splash:
+  color: "#FFD26F"
+  android: true
+  ios: true
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png"
+
+flutter:
+  uses-material-design: true
+
