@@ -11,6 +11,8 @@ import 'package:csv/csv.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'menu_dialogs.dart';
 import 'audio_player.dart';
+import 'package:http/http.dart' as http;
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,19 +34,21 @@ void main() async {
 // Helper function to load Tao data and launch app directly to detail page
 Future<void> _loadTaoDataAndLaunchApp(int taoNumber) async {
   try {
-    final sheetId = '1D0wC0iE-eXb0WXy3_UPOcxvzVCBEBbj2k3QoiPdJPXc';
-    final csvUrl = 'https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv';
+    // Use the same TSV URL
+    final sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGGMKfHjb9Chb1F8ML9blK8GKl20sNl0BkhWbxdAFj4o_mWW4j0FwqGr-aQjtU_cC8jVlGspufxNw0/pub?output=tsv";
 
-    final response = await http.get(Uri.parse(csvUrl));
+    final response = await http.get(Uri.parse(sheetUrl));
     if (response.statusCode == 200) {
-      final csvConverter = CsvToListConverter(shouldParseNumbers: false, allowInvalid: false);
-      final List<List<dynamic>> csvList = csvConverter.convert(response.body);
+      final lines = response.body.split('\n');
       final List<TaoData> taoDataList = [];
 
-      for (int i = 1; i < csvList.length; i++) {
-        final row = csvList[i];
-        if (row.isNotEmpty && row.length >= 2) {
-          final taoData = TaoData.fromCsv(row.map((e) => e.toString()).toList());
+      for (int i = 1; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (line.isEmpty) continue;
+
+        final row = line.split('\t');
+        if (row.isNotEmpty) {
+          final taoData = TaoData.fromCsv(row);
           if (taoData.number > 0) {
             taoDataList.add(taoData);
           }
@@ -70,6 +74,7 @@ Future<void> _loadTaoDataAndLaunchApp(int taoNumber) async {
       runApp(MyApp());
     }
   } catch (e) {
+    print('❌ Error in _loadTaoDataAndLaunchApp: $e');
     // Fallback to normal launch on error
     runApp(MyApp());
   }
@@ -172,9 +177,11 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
     for (int attempt = 1; attempt <= retries; attempt++) {
       try {
+        print('🔄 Attempt $attempt of $retries to fetch data...');
         await _fetchTaoData();
-        return;
+        return; // Success - exit the retry loop
       } catch (e) {
+        print('❌ Attempt $attempt failed: $e');
         if (attempt == retries) {
           setState(() {
             _hasError = true;
@@ -185,6 +192,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
             isRetryable: true,
           );
         } else {
+          print('⏳ Waiting ${attempt * 2} seconds before retry...');
           await Future.delayed(Duration(seconds: attempt * 2));
         }
       }
@@ -193,47 +201,64 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
   Future<void> _fetchTaoData() async {
     try {
-      final sheetId = '1D0wC0iE-eXb0WXy3_UPOcxvzVCBEBbj2k3QoiPdJPXc';
-      final csvUrl = 'https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv';
+      // Use TSV format - much more reliable with Google Sheets
+      final sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGGMKfHjb9Chb1F8ML9blK8GKl20sNl0BkhWbxdAFj4o_mWW4j0FwqGr-aQjtU_cC8jVlGspufxNw0/pub?output=tsv";
 
-      final response = await http.get(Uri.parse(csvUrl)).timeout(
+      print('🔄 Fetching Tao data from: $sheetUrl');
+
+      final response = await http.get(Uri.parse(sheetUrl)).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          throw Exception('Request timed out');
+          throw Exception('Request timed out after 30 seconds');
         },
       );
 
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body length: ${response.body.length}');
+
       if (response.statusCode == 200) {
-        _processCsvData(response.body);
+        _processTsvData(response.body);
         return;
       } else {
         throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
       }
     } catch (e) {
+      print('❌ Error fetching Tao data: $e');
       _showFallbackData();
       rethrow;
     }
   }
 
-  void _processCsvData(String csvData) {
+  void _processTsvData(String tsvData) {
     try {
-      final csvConverter = CsvToListConverter(
-        shouldParseNumbers: false,
-        allowInvalid: false,
-      );
+      print('🔄 Processing TSV data...');
 
-      final List<List<dynamic>> csvList = csvConverter.convert(csvData);
+      if (tsvData.isEmpty) {
+        throw Exception('TSV data is empty');
+      }
+
+      final lines = tsvData.split('\n');
+      print('📊 Found ${lines.length} lines in TSV data');
+
       final List<TaoData> taoDataList = [];
 
-      for (int i = 1; i < csvList.length; i++) {
-        final row = csvList[i];
-        if (row.isNotEmpty && row.length >= 2) {
-          final taoData = TaoData.fromCsv(row.map((e) => e.toString()).toList());
+      // Skip header row (index 0) and process each line
+      for (int i = 1; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (line.isEmpty) continue;
+
+        // Split by tab character for TSV
+        final row = line.split('\t');
+
+        if (row.isNotEmpty) {
+          final taoData = TaoData.fromCsv(row); // We'll update this method to handle TSV
           if (taoData.number > 0) {
             taoDataList.add(taoData);
           }
         }
       }
+
+      print('✅ Successfully processed ${taoDataList.length} Tao entries');
 
       taoDataList.sort((a, b) => a.number.compareTo(b.number));
 
@@ -244,8 +269,9 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       });
 
     } catch (e) {
+      print('❌ TSV processing error: $e');
       _showFallbackData();
-      throw Exception('CSV parsing error: $e');
+      throw Exception('TSV parsing error: $e');
     }
   }
 
@@ -475,7 +501,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                         fontSize: isSelected ? 40 : 24,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
-                            ? (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))  // ← FIXED
+                            ? (isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00)) // ← FIXED
                             : (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFD45C33)),
                       ),
                     ),
@@ -497,25 +523,6 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                   fontStyle: FontStyle.italic,
                 ),
               ),
-              //const SizedBox(height: 30),
-              //Container(
-                //padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                //decoration: BoxDecoration(
-                  //color: (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)).withOpacity(0.1),
-                  //borderRadius: BorderRadius.circular(0),
-                  //border: Border.all(
-                    //color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
-                 // ),
-                //),
-                //child: Text(
-                  //'Choose #$_selectedNumber',
-                  //style: TextStyle(
-                    //color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFD45C33),
-                    //fontWeight: FontWeight.bold,
-                    //fontSize: 12,
-                  //),
-                //),
-              //),
             ],
           ),
           const SizedBox(height: 20),
@@ -552,6 +559,19 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                 'You have already selected your Tao for today.\nCome back tomorrow to explore another.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+              ),
+            ),
+          ],
+          if (!_isLoading && _taoDataList.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(8),
+              color: Colors.grey[200],
+              child: Text(
+                'DEBUG: Loaded ${_taoDataList.length} Tao entries\n'
+                    'First: ${_taoDataList.first.number} - ${_taoDataList.first.title}\n'
+                    'Last: ${_taoDataList.last.number} - ${_taoDataList.last.title}',
+                style: const TextStyle(fontSize: 10, color: Colors.black87),
               ),
             ),
           ],
