@@ -1,7 +1,7 @@
 # codemagic.yaml
 workflows:
   flutter-app:
-    name: Flutter App
+    name: Build APK & AAB
     environment:
       groups:
       # Add your App Store Connect API key here later
@@ -12,14 +12,17 @@ workflows:
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
-      - name: Build Android
+      - name: Build Android APK
         script: flutter build apk --release
+      - name: Build Android AAB
+        script: flutter build appbundle --release
       - name: Build iOS
         script: flutter build ios --release --no-codesign
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
       - build/ios/ipa/*.ipa
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - mjongarcia@gmail.com  # Changed to your actual email
