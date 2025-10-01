@@ -39,4 +39,6 @@ flutter_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    - lib/data/tao_data.json
 
