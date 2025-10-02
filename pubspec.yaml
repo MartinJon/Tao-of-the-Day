@@ -38,7 +38,8 @@ flutter_icons:
   image_path: "assets/icon.png"
 
 flutter:
-  uses-material-design: true
-  assets:
-    - lib/data/tao_data.json
+    uses-material-design: true
+
+    assets:
+      - lib/data/tao_data.json
 

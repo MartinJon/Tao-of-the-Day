@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:csv/csv.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'menu_dialogs.dart';
 import 'audio_player.dart';
@@ -32,43 +31,34 @@ void main() async {
 // Helper function to load Tao data and launch app directly to detail page
 Future<void> _loadTaoDataAndLaunchApp(int taoNumber) async {
   try {
-    // Use the same TSV URL
-    final sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGGMKfHjb9Chb1F8ML9blK8GKl20sNl0BkhWbxdAFj4o_mWW4j0FwqGr-aQjtU_cC8jVlGspufxNw0/pub?output=tsv";
+    print('📦 Loading local Tao data for direct launch...');
 
-    final response = await http.get(Uri.parse(sheetUrl));
-    if (response.statusCode == 200) {
-      final lines = response.body.split('\n');
-      final List<TaoData> taoDataList = [];
+    // Load from local JSON
+    final String data = await rootBundle.loadString('lib/data/tao_data.json');
+    final List<dynamic> jsonList = jsonDecode(data);
 
-      for (int i = 1; i < lines.length; i++) {
-        final line = lines[i].trim();
-        if (line.isEmpty) continue;
+    final List<TaoData> taoDataList = [];
 
-        final row = line.split('\t');
-        if (row.isNotEmpty) {
-          final taoData = TaoData.fromCsv(row);
-          if (taoData.number > 0) {
-            taoDataList.add(taoData);
-          }
-        }
+    for (final json in jsonList) {
+      final taoData = TaoData.fromJson(json);  // Use fromJson
+      if (taoData.number > 0) {
+        taoDataList.add(taoData);
       }
+    }
 
-      taoDataList.sort((a, b) => a.number.compareTo(b.number));
+    taoDataList.sort((a, b) => a.number.compareTo(b.number));
 
-      // Find the Tao data for the selected number
-      final taoData = taoDataList.firstWhere(
-            (data) => data.number == taoNumber,
-        orElse: () => TaoData.empty(),
-      );
+    // Find the Tao data for the selected number
+    final taoData = taoDataList.firstWhere(
+          (data) => data.number == taoNumber,
+      orElse: () => TaoData.empty(),
+    );
 
-      if (taoData.number != 0) {
-        // Launch app directly to the detail page
-        runApp(MyApp(initialRoute: taoData));
-      } else {
-        // Fallback to normal launch
-        runApp(MyApp());
-      }
+    if (taoData.number != 0) {
+      // Launch app directly to the detail page
+      runApp(MyApp(initialRoute: taoData));
     } else {
+      // Fallback to normal launch
       runApp(MyApp());
     }
   } catch (e) {
@@ -196,66 +186,40 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
   Future<void> _fetchTaoData() async {
     try {
-      // Use TSV format - much more reliable with Google Sheets
-      final sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGGMKfHjb9Chb1F8ML9blK8GKl20sNl0BkhWbxdAFj4o_mWW4j0FwqGr-aQjtU_cC8jVlGspufxNw0/pub?output=tsv";
-
-      print('🔄 Fetching Tao data from: $sheetUrl');
-
-      final response = await http.get(Uri.parse(sheetUrl)).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw Exception('Request timed out after 30 seconds');
-        },
-      );
-
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body length: ${response.body.length}');
-
-      if (response.statusCode == 200) {
-        _processTsvData(response.body);
-        return;
-      } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
-      }
+      print('📦 Loading local Tao data from JSON...');
+      await _loadLocalTaoData();
     } catch (e) {
-      print('❌ Error fetching Tao data: $e');
+      print('❌ Error loading local data: $e');
       _showFallbackData();
-      rethrow;
     }
   }
 
-  void _processTsvData(String tsvData) {
+
+  Future<void> _loadLocalTaoData() async {
     try {
-      print('🔄 Processing TSV data...');
-
-      if (tsvData.isEmpty) {
-        throw Exception('TSV data is empty');
-      }
-
-      final lines = tsvData.split('\n');
-      print('📊 Found ${lines.length} lines in TSV data');
+      final String data = await rootBundle.loadString('lib/data/tao_data.json');
+      final List<dynamic> jsonList = jsonDecode(data);
 
       final List<TaoData> taoDataList = [];
 
-      // Skip header row (index 0) and process each line
-      for (int i = 1; i < lines.length; i++) {
-        final line = lines[i].trim();
-        if (line.isEmpty) continue;
-
-        // Split by tab character for TSV
-        final row = line.split('\t');
-
-        if (row.isNotEmpty) {
-          final taoData = TaoData.fromCsv(row);
-          if (taoData.number > 0) {
-            taoDataList.add(taoData);
-          }
+      for (final json in jsonList) {
+        final taoData = TaoData.fromJson(json);
+        if (taoData.number > 0) {
+          taoDataList.add(taoData);
         }
       }
 
-      print('✅ Successfully processed ${taoDataList.length} Tao entries');
-
       taoDataList.sort((a, b) => a.number.compareTo(b.number));
+
+      print('✅ Successfully loaded ${taoDataList.length} Tao entries from local JSON');
+
+      for (int i = 0; i < 3 && i < taoDataList.length; i++) {
+        final tao = taoDataList[i];
+        print('🎵 Tao ${tao.number} - Audio URLs:');
+        print('   Audio1: "${tao.audio1}"');
+        print('   Audio2: "${tao.audio2}"');
+        print('   Audio3: "${tao.audio3}"');
+      }
 
       setState(() {
         _taoDataList = taoDataList;
@@ -264,11 +228,12 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       });
 
     } catch (e) {
-      print('❌ TSV processing error: $e');
-      _showFallbackData();
-      throw Exception('TSV parsing error: $e');
+      print('❌ Error parsing local JSON data: $e');
+      throw Exception('Failed to parse local Tao data');
     }
   }
+
+
 
   void _showFallbackData() {
     print('🔄 Using comprehensive fallback data');
@@ -1330,21 +1295,24 @@ class TaoData {
     required this.audio3,
   });
 
-  factory TaoData.fromCsv(List<String> values) {
-    if (values.isEmpty) return TaoData.empty();
+  factory TaoData.fromJson(Map<String, dynamic> json) {
+    // Convert // to \n for proper line breaks
+    String formatText(String text) {
+      return text.replaceAll('//', '\n').replaceAll('////', '\n\n');
+    }
 
-    String rawText = values.length > 2 ? values[2] : 'Text not available';
-    String formattedText = _formatTaoText(rawText);
-    String formattedNotes = values.length > 3 ? _formatNotes(values[3]) : '';
+    String formatNotes(String notes) {
+      return notes.replaceAll('\\n', '\n');
+    }
 
     return TaoData(
-      number: int.tryParse(values[0]) ?? 0,
-      title: values.length > 1 ? values[1] : 'Untitled',
-      text: formattedText,
-      notes: formattedNotes,
-      audio1: values.length > 4 ? values[4] : '',
-      audio2: values.length > 5 ? values[5] : '',
-      audio3: values.length > 6 ? values[6] : '',
+      number: int.tryParse(json['number'].toString()) ?? 0,
+      title: json['title']?.toString() ?? 'Untitled',
+      text: formatText(json['text']?.toString() ?? 'Text not available'),
+      notes: formatNotes(json['notes']?.toString() ?? ''),
+      audio1: json['1']?.toString() ?? '',
+      audio2: json['2']?.toString() ?? '',
+      audio3: json['3']?.toString() ?? '',
     );
   }
 
