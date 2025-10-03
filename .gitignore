@@ -57,3 +57,14 @@ ios/.generated/
 ios/Flutter/Flutter.framework/
 ios/Flutter/Flutter.podspec
 ios/ServiceDefinitions.json
+
+# Additional Flutter coverage
+**.dart_tool/
+**.packages
+*.dart.js
+
+# Platform-specific generated files
+/windows/flutter/generated_plugin_registrant.cc
+/macos/Flutter/GeneratedPluginRegistrant.swift
+/linux/flutter/generated_plugin_registrant.cc
+/web/**/lib/
