@@ -451,6 +451,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
      final canSelectNew = await _canSelectNewNumber(); // Comment this out for testing
     //final canSelectNew = await _canSelectNewNumberForTesting(); // Use this for testing
 
+
     if (!canSelectNew) {
       final prefs = await SharedPreferences.getInstance();
       final lastSelected = prefs.getInt('selectedNumber') ?? 0;
@@ -486,6 +487,9 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     } else {
       _showErrorDialog('No data found for Tao $number.', isRetryable: false);
     }
+
+     print('🔍 DAILY LIMIT DEBUG: canSelectNew = $canSelectNew');
+     print('🔍 DAILY LIMIT DEBUG: number = $number');
   }
 
   void _showAlreadySelectedDialog() {
