@@ -156,6 +156,44 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
   bool _isButtonEnabled = true;
   bool _isLoading = false;
   bool _hasError = false;
+  List<int> _selectedNumbers = [];
+  bool _filterUsedNumbers = false;
+
+  Future<void> _resetTaoJourney() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('selectedNumbers');
+    setState(() {
+      _selectedNumbers.clear();
+      _filterUsedNumbers = false;
+    });
+  }
+
+  Future<void> _loadSelectedNumbers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final selected = prefs.getStringList('selectedNumbers') ?? [];
+    _selectedNumbers = selected.map((e) => int.parse(e)).toList();
+
+    // Load the filter preference
+    _filterUsedNumbers = prefs.getBool('filterUsedNumbers') ?? false;
+  }
+
+  Future<void> _saveSelectedNumber(int number) async {
+    if (!_selectedNumbers.contains(number)) {
+      _selectedNumbers.add(number);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('selectedNumbers',
+          _selectedNumbers.map((e) => e.toString()).toList());
+      setState(() {}); // Refresh UI
+    }
+  }
+
+  Future<void> _toggleFilterUsedNumbers(bool value) async {
+    setState(() {
+      _filterUsedNumbers = value;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('filterUsedNumbers', value);
+  }
 
   Future<void> _fetchTaoDataWithRetry({int retries = 3}) async {
     setState(() {
@@ -325,7 +363,12 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     return lastSelectedDate != currentDate;
   }
 
-  Future<void> _saveSelectedNumber(int number) async {
+  //Future<bool> _canSelectNewNumberForTesting() async {
+    //return true; // Always allow selection during testing
+    // return await _canSelectNewNumber(); // Use this for production
+  //}
+
+  Future<void> _saveToTaoJourney(int number) async {
     final prefs = await SharedPreferences.getInstance();
     final currentDate = DateFormat('yyyyMMdd').format(DateTime.now());
 
@@ -334,11 +377,28 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
   }
 
   void _selectRandomNumber() {
-    final random = Random();
-    final availableNumbers = _taoDataList;
+    // Get available numbers based on filter setting
+    List<int> availableNumbers;
+
+    if (_filterUsedNumbers && _selectedNumbers.isNotEmpty) {
+      // Only show numbers that haven't been selected
+      availableNumbers = List.generate(81, (index) => index + 1)
+          .where((number) => !_selectedNumbers.contains(number))
+          .toList();
+
+      // If all numbers have been selected, show a message
+      if (availableNumbers.isEmpty) {
+        _showAllTaoCompletedDialog();
+        return;
+      }
+    } else {
+      // Show all numbers (original behavior)
+      availableNumbers = _taoDataList.map((tao) => tao.number).toList();
+    }
 
     if (availableNumbers.isNotEmpty) {
-      final randomNumber = availableNumbers[random.nextInt(availableNumbers.length)].number;
+      final random = Random();
+      final randomNumber = availableNumbers[random.nextInt(availableNumbers.length)];
 
       setState(() {
         _selectedNumber = randomNumber;
@@ -349,12 +409,56 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     }
   }
 
+  void _showAllTaoCompletedDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        return AlertDialog(
+          title: Text(
+              'Tao Journey Complete! 🎉',
+              style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                  Icons.celebration,
+                  size: 50,
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)
+              ),
+              SizedBox(height: 16),
+              Text(
+                'You have explored all 81 Tao chapters! '
+                    'This is a significant milestone in your Tao journey.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _navigateToTaoDetail(int number) async {
-    final canSelectNew = await _canSelectNewNumber();
+     final canSelectNew = await _canSelectNewNumber(); // Comment this out for testing
+    //final canSelectNew = await _canSelectNewNumberForTesting(); // Use this for testing
 
     if (!canSelectNew) {
       final prefs = await SharedPreferences.getInstance();
       final lastSelected = prefs.getInt('selectedNumber') ?? 0;
+
+      if (canSelectNew) {
+        await _saveToTaoJourney(number); // Changed from _saveSelectedNumber
+        await _saveSelectedNumber(number); // Keep the original daily save
+      }
 
       if (number != lastSelected) {
         _showAlreadySelectedDialog();
@@ -370,6 +474,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     if (taoData.number != 0) {
       if (canSelectNew) {
         await _saveSelectedNumber(number);
+        await _saveSelectedNumber(number); // Daily limit
       }
 
       Navigator.push(
@@ -431,6 +536,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     super.initState();
     _fetchTaoDataWithRetry();
     _checkDailySelection();
+    _loadSelectedNumbers();
   }
 
   Future<void> _checkDailySelection() async {
@@ -484,11 +590,14 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       );
     }
 
-    return SingleChildScrollView(
+    return SingleChildScrollView(  // ← This should be the return statement
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
+
+
+
+          Text(  // ← Your existing title
             'Select a Tao Chapter (1-81):',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
@@ -499,6 +608,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           const SizedBox(height: 20),
 
           // Number selector
+          // Number selector with Tao Journey indicators
           Container(
             height: 50,
             child: ListView(
@@ -507,6 +617,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
               children: List.generate(81, (index) {
                 final number = index + 1;
                 final isSelected = _selectedNumber == number;
+                final isInJourney = _selectedNumbers.contains(number);
+
                 return GestureDetector(
                   onTap: () {
                     setState(() {
@@ -516,21 +628,41 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     alignment: Alignment.center,
-                    child: Text(
-                      '$number',
-                      style: TextStyle(
-                        fontSize: isSelected ? 40 : 24,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected
-                            ? (isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00))
-                            : (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFD45C33)),
-                      ),
+                    child: Stack(
+                      children: [
+                        Text(
+                          '$number',
+                          style: TextStyle(
+                            fontSize: isSelected ? 40 : 24,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected
+                                ? (isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00))
+                                : (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFD45C33)), // Always normal color
+                          ),
+                        ),
+                        // Small dot indicator for Tao Journey numbers
+                        if (isInJourney && _filterUsedNumbers)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // Your theme colors
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 );
               }),
             ),
           ),
+
+
           const SizedBox(height: 50),
 
           // Instructions
@@ -581,7 +713,78 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
             ),
           ],
 
-          // Debug widget
+          // Tao Journey toggle
+
+
+
+          Container(
+            padding: const EdgeInsets.only(top: 20),
+            child: Column(
+              children: [
+                // Simple toggle only
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      size: 20,
+                      color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // Your theme colors
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Previous selections',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.black87,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Switch(
+                      value: _filterUsedNumbers,
+                      onChanged: (value) {
+                        _toggleFilterUsedNumbers(value);
+                      },
+                      activeColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // Your theme colors
+                    ),
+                  ],
+                ),
+
+                // ONLY show these when toggle is ON
+                if (_filterUsedNumbers) ...[
+                  SizedBox(height: 16),
+
+                  // Progress indicator
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Tao Journey: ${_selectedNumbers.length}/81 explored',
+                      style: TextStyle(
+                        color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // Your theme colors
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                  // Reset button (only show if there are selections)
+                  if (_selectedNumbers.isNotEmpty)
+                    TextButton(
+                      onPressed: _resetTaoJourney,
+                      child: Text(
+                        'Reset Journey',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.red : Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+
+// Debug widget (keep this where it was)
           if (!_isLoading && _taoDataList.isNotEmpty) ...[
             const SizedBox(height: 20),
             Container(
@@ -595,6 +798,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
               ),
             ),
           ],
+
         ],
       ),
     );

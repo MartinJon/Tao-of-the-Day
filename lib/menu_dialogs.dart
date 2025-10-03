@@ -24,6 +24,13 @@ class MenuDialogs {
           ),
         ),
         const PopupMenuItem<String>(
+          value: 'tao_journey',
+          child: ListTile(
+            leading: Icon(Icons.auto_awesome),
+            title: Text('Tao Journey Settings'),
+          ),
+        ),
+        const PopupMenuItem<String>(
           value: 'noomvibe',
           child: ListTile(
             leading: Icon(Icons.live_tv),
@@ -151,6 +158,21 @@ class MenuDialogs {
                     color: isDarkMode ? Colors.white70 : Colors.black87,
                     fontStyle: FontStyle.italic,
                   ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Tao Journey Feature:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Track your progress through the 81 Tao chapters with the Tao Journey feature. '
+                      'Toggle "Track your selections" to see which chapters you\'ve explored and focus on new ones. '
+                      'Your journey is saved locally on your device.',
+                  style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
               ],
             ),
@@ -658,6 +680,8 @@ class MenuDialogs {
                       Text(
                         '• selectedNumber: Your daily Tao choice (e.g., "42")\n'
                             '• selectedNumberDate: Date of selection (e.g., "20241225")\n'
+                            '• selectedNumbers: Your Tao journey progress (e.g., "[1, 5, 42]")\n'
+                            '• filterUsedNumbers: Tao journey filter preference\n'
                             '• Theme preference: Your light/dark mode choice',
                         style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                       ),
