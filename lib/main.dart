@@ -448,18 +448,12 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
   }
 
   void _navigateToTaoDetail(int number) async {
-     final canSelectNew = await _canSelectNewNumber(); // Comment this out for testing
-    //final canSelectNew = await _canSelectNewNumberForTesting(); // Use this for testing
+    final canSelectNew = await _canSelectNewNumber();
 
-
+    // DAILY LIMIT CHECK
     if (!canSelectNew) {
       final prefs = await SharedPreferences.getInstance();
       final lastSelected = prefs.getInt('selectedNumber') ?? 0;
-
-      if (canSelectNew) {
-        await _saveToTaoJourney(number); // Changed from _saveSelectedNumber
-        await _saveSelectedNumber(number); // Keep the original daily save
-      }
 
       if (number != lastSelected) {
         _showAlreadySelectedDialog();
@@ -473,9 +467,10 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     );
 
     if (taoData.number != 0) {
+      // SAVE LOGIC - Only if it's a new daily selection
       if (canSelectNew) {
-        await _saveSelectedNumber(number);
-        await _saveSelectedNumber(number); // Daily limit
+        await _saveToTaoJourney(number); // Tao Journey tracking
+        await _saveSelectedNumber(number); // Daily limit (ONLY ONCE)
       }
 
       Navigator.push(
@@ -488,8 +483,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       _showErrorDialog('No data found for Tao $number.', isRetryable: false);
     }
 
-     print('🔍 DAILY LIMIT DEBUG: canSelectNew = $canSelectNew');
-     print('🔍 DAILY LIMIT DEBUG: number = $number');
+    print('🔍 DAILY LIMIT DEBUG: canSelectNew = $canSelectNew');
+    print('🔍 DAILY LIMIT DEBUG: number = $number');
   }
 
   void _showAlreadySelectedDialog() {
