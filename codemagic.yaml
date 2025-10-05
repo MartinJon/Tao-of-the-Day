@@ -27,7 +27,7 @@
       groups:
         - app_store_credentials
       vars:
-        BUNDLE_ID: "com.example.taoAppFixed"
+        BUNDLE_ID: "com.martinjon.tao_app"
         APP_STORE_CONNECT_ISSUER_ID: "$APP_STORE_CONNECT_ISSUER_ID"
         APP_STORE_CONNECT_KEY_IDENTIFIER: "$APP_STORE_CONNECT_KEY_IDENTIFIER"
         APP_STORE_CONNECT_PRIVATE_KEY: "$APP_STORE_CONNECT_PRIVATE_KEY"
