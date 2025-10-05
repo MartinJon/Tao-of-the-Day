@@ -40,17 +40,26 @@ Future<void> _loadTaoDataAndLaunchApp(int taoNumber) async {
     final List<TaoData> taoDataList = [];
 
     for (final json in jsonList) {
-      final taoData = TaoData.fromJson(json);  // Use fromJson
-      if (taoData.number > 0) {
-        taoDataList.add(taoData);
+      try {
+        final taoData = TaoData.fromJson(json);
+        if (taoData.number > 0) {
+          taoDataList.add(taoData);
+        }
+      } catch (e) {
+        print('❌ Error parsing Tao entry: $e');
+        // Continue with other entries instead of failing completely
       }
+    }
+
+    if (taoDataList.isEmpty) {
+      throw Exception('No valid Tao data found');
     }
 
     taoDataList.sort((a, b) => a.number.compareTo(b.number));
 
     // Find the Tao data for the selected number
     final taoData = taoDataList.firstWhere(
-          (data) => data.number == taoNumber,
+      (data) => data.number == taoNumber,
       orElse: () => TaoData.empty(),
     );
 
@@ -232,7 +241,6 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     }
   }
 
-
   Future<void> _loadLocalTaoData() async {
     try {
       final String data = await rootBundle.loadString('lib/data/tao_data.json');
@@ -249,7 +257,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
       taoDataList.sort((a, b) => a.number.compareTo(b.number));
 
-      print('✅ Successfully loaded ${taoDataList.length} Tao entries from local JSON');
+      print(
+          '✅ Successfully loaded ${taoDataList.length} Tao entries from local JSON');
 
       for (int i = 0; i < 3 && i < taoDataList.length; i++) {
         final tao = taoDataList[i];
@@ -264,14 +273,11 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         _isLoading = false;
         _hasError = false;
       });
-
     } catch (e) {
       print('❌ Error parsing local JSON data: $e');
       throw Exception('Failed to parse local Tao data');
     }
   }
-
-
 
   void _showFallbackData() {
     print('🔄 Using comprehensive fallback data');
@@ -283,7 +289,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         number: i,
         title: 'Tao Chapter $i',
         text: _getFallbackTaoText(i),
-        notes: 'Sample notes for Tao $i. This is fallback data while we resolve connection issues.',
+        notes:
+            'Sample notes for Tao $i. This is fallback data while we resolve connection issues.',
         audio1: '',
         audio2: '',
         audio3: '',
@@ -304,7 +311,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       81: 'True words aren\'t eloquent; eloquent words aren\'t true. Wise men don\'t need to prove their point; men who need to prove their point aren\'t wise.',
     };
 
-    return samples[chapter] ?? 'The Tao Te Ching teaches us about the natural way of the universe. Chapter $chapter offers wisdom about harmony and balance.';
+    return samples[chapter] ??
+        'The Tao Te Ching teaches us about the natural way of the universe. Chapter $chapter offers wisdom about harmony and balance.';
   }
 
   void _showNetworkErrorDialog() {
@@ -314,25 +322,26 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
         return AlertDialog(
-          title: Text(
-              'Connection Issue',
-              style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))
-          ),
+          title: Text('Connection Issue',
+              style: TextStyle(
+                  color: isDarkMode
+                      ? const Color(0xFFD45C33)
+                      : const Color(0xFF7E1A00))),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                  Icons.wifi_off,
+              Icon(Icons.wifi_off,
                   size: 50,
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)
-              ),
+                  color: isDarkMode
+                      ? const Color(0xFFD45C33)
+                      : const Color(0xFF7E1A00)),
               SizedBox(height: 16),
               Text(
                 "Can't connect to Tao data. This could be due to:\n\n"
-                    "• Network connectivity issues\n"
-                    "• Firewall blocking the connection\n"
-                    "• Temporary server problems\n\n"
-                    "The app will use sample data instead.",
+                "• Network connectivity issues\n"
+                "• Firewall blocking the connection\n"
+                "• Temporary server problems\n\n"
+                "The app will use sample data instead.",
                 textAlign: TextAlign.left,
               ),
             ],
@@ -364,8 +373,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
   }
 
   //Future<bool> _canSelectNewNumberForTesting() async {
-    //return true; // Always allow selection during testing
-    // return await _canSelectNewNumber(); // Use this for production
+  //return true; // Always allow selection during testing
+  // return await _canSelectNewNumber(); // Use this for production
   //}
 
   Future<void> _saveToTaoJourney(int number) async {
@@ -398,7 +407,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
     if (availableNumbers.isNotEmpty) {
       final random = Random();
-      final randomNumber = availableNumbers[random.nextInt(availableNumbers.length)];
+      final randomNumber =
+          availableNumbers[random.nextInt(availableNumbers.length)];
 
       setState(() {
         _selectedNumber = randomNumber;
@@ -416,22 +426,23 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
         return AlertDialog(
-          title: Text(
-              'Tao Journey Complete! 🎉',
-              style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))
-          ),
+          title: Text('Tao Journey Complete! 🎉',
+              style: TextStyle(
+                  color: isDarkMode
+                      ? const Color(0xFFD45C33)
+                      : const Color(0xFF7E1A00))),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                  Icons.celebration,
+              Icon(Icons.celebration,
                   size: 50,
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)
-              ),
+                  color: isDarkMode
+                      ? const Color(0xFFD45C33)
+                      : const Color(0xFF7E1A00)),
               SizedBox(height: 16),
               Text(
                 'You have explored all 81 Tao chapters! '
-                    'This is a significant milestone in your Tao journey.',
+                'This is a significant milestone in your Tao journey.',
                 textAlign: TextAlign.center,
               ),
             ],
@@ -462,7 +473,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     }
 
     final taoData = _taoDataList.firstWhere(
-          (data) => data.number == number,
+      (data) => data.number == number,
       orElse: () => TaoData.empty(),
     );
 
@@ -493,7 +504,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Daily Tao Already Selected'),
-          content: const Text('You can only explore one Tao number per day. Please come back tomorrow to explore another.'),
+          content: const Text(
+              'You can only explore one Tao number per day. Please come back tomorrow to explore another.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -513,13 +525,14 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           title: const Text('Error'),
           content: Text(message),
           actions: [
-            if (isRetryable) TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _fetchTaoDataWithRetry();
-              },
-              child: const Text('Retry'),
-            ),
+            if (isRetryable)
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _fetchTaoDataWithRetry();
+                },
+                child: const Text('Retry'),
+              ),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('OK'),
@@ -552,7 +565,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tao of the Day'),
-        backgroundColor: isDarkMode ? const Color(0xFF5C1A00) : const Color(0xFF7E1A00),
+        backgroundColor:
+            isDarkMode ? const Color(0xFF5C1A00) : const Color(0xFF7E1A00),
         actions: [
           MenuDialogs.buildMenuButton(context),
         ],
@@ -571,7 +585,9 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+              color: isDarkMode
+                  ? const Color(0xFFD45C33)
+                  : const Color(0xFF7E1A00),
             ),
             const SizedBox(height: 20),
             const Text('Loading Tao data...'),
@@ -580,7 +596,9 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
               Text(
                 'Having trouble connecting...',
                 style: TextStyle(
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                  color: isDarkMode
+                      ? const Color(0xFFD45C33)
+                      : const Color(0xFF7E1A00),
                 ),
               ),
             ],
@@ -589,78 +607,92 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       );
     }
 
-    return SingleChildScrollView(  // ← This should be the return statement
+    return SingleChildScrollView(
+      // ← This should be the return statement
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-
-
-
-          Text(  // ← Your existing title
+          Text(
+            // ← Your existing title
             'Select a Tao Chapter (1-81):',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
-              fontWeight: FontWeight.bold,
-            ),
+                  color: isDarkMode
+                      ? const Color(0xFFD45C33)
+                      : const Color(0xFF7E1A00),
+                  fontWeight: FontWeight.bold,
+                ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
 
           // Number selector
           // Number selector with Tao Journey indicators
-          Container(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: List.generate(81, (index) {
-                final number = index + 1;
-                final isSelected = _selectedNumber == number;
-                final isInJourney = _selectedNumbers.contains(number);
+          Builder(
+            builder: (context) {
+              return Container(
+                height: 50,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  children: List.generate(81, (index) {
+                    final number = index + 1;
+                    final isSelected = _selectedNumber == number;
+                    final isInJourney = _selectedNumbers.contains(number);
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedNumber = number;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    alignment: Alignment.center,
-                    child: Stack(
-                      children: [
-                        Text(
-                          '$number',
-                          style: TextStyle(
-                            fontSize: isSelected ? 40 : 24,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected
-                                ? (isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00))
-                                : (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFD45C33)), // Always normal color
-                          ),
-                        ),
-                        // Small dot indicator for Tao Journey numbers
-                        if (isInJourney && _filterUsedNumbers)
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // Your theme colors
-                                shape: BoxShape.circle,
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedNumber = number;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        alignment: Alignment.center,
+                        child: Stack(
+                          children: [
+                            Text(
+                              '$number',
+                              style: TextStyle(
+                                fontSize: isSelected ? 40 : 24,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isSelected
+                                    ? (isDarkMode
+                                        ? const Color(0xFFFFD26F)
+                                        : const Color(0xFF7E1A00))
+                                    : (isDarkMode
+                                        ? const Color(0xFFD45C33)
+                                        : const Color(
+                                            0xFFD45C33)), // Always normal color
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            ),
+                            // Small dot indicator for Tao Journey numbers
+                            if (isInJourney && _filterUsedNumbers)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode
+                                        ? const Color(0xFFD45C33)
+                                        : const Color(
+                                            0xFF7E1A00), // Your theme colors
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              );
+            },
           ),
-
 
           const SizedBox(height: 50),
 
@@ -682,12 +714,15 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
             runSpacing: 10,
             children: [
               ElevatedButton.icon(
-                onPressed: _isButtonEnabled ? () => _selectRandomNumber() : null,
+                onPressed:
+                    _isButtonEnabled ? () => _selectRandomNumber() : null,
                 icon: const Icon(Icons.shuffle),
                 label: const Text('Random Tao'),
               ),
               ElevatedButton.icon(
-                onPressed: (_isButtonEnabled && !_isLoading) ? () => _navigateToTaoDetail(_selectedNumber) : null,
+                onPressed: (_isButtonEnabled && !_isLoading)
+                    ? () => _navigateToTaoDetail(_selectedNumber)
+                    : null,
                 icon: const Icon(Icons.arrow_forward),
                 label: const Text('Explore Tao'),
               ),
@@ -700,21 +735,28 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: (isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFFFD26F)).withOpacity(0.8),
+                color: (isDarkMode
+                        ? const Color(0xFF2A2A2A)
+                        : const Color(0xFFFFD26F))
+                    .withOpacity(0.8),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+                border: Border.all(
+                    color: isDarkMode
+                        ? const Color(0xFFD45C33)
+                        : const Color(0xFF7E1A00)),
               ),
               child: Text(
                 'You have already selected your Tao for today.\nCome back tomorrow to explore another.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+                style: TextStyle(
+                    color: isDarkMode
+                        ? const Color(0xFFD45C33)
+                        : const Color(0xFF7E1A00)),
               ),
             ),
           ],
 
           // Tao Journey toggle
-
-
 
           Container(
             padding: const EdgeInsets.only(top: 20),
@@ -727,7 +769,9 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                     Icon(
                       Icons.auto_awesome,
                       size: 20,
-                      color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // Your theme colors
+                      color: isDarkMode
+                          ? const Color(0xFFD45C33)
+                          : const Color(0xFF7E1A00), // Your theme colors
                     ),
                     SizedBox(width: 8),
                     Text(
@@ -743,7 +787,9 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                       onChanged: (value) {
                         _toggleFilterUsedNumbers(value);
                       },
-                      activeColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // Your theme colors
+                      activeColor: isDarkMode
+                          ? const Color(0xFFD45C33)
+                          : const Color(0xFF7E1A00), // Your theme colors
                     ),
                   ],
                 ),
@@ -758,7 +804,9 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                     child: Text(
                       'Tao Journey: ${_selectedNumbers.length}/81 explored',
                       style: TextStyle(
-                        color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // Your theme colors
+                        color: isDarkMode
+                            ? const Color(0xFFD45C33)
+                            : const Color(0xFF7E1A00), // Your theme colors
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -784,20 +832,19 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           ),
 
 // Debug widget (keep this where it was)
-          if (!_isLoading && _taoDataList.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(8),
-              color: Colors.grey[200],
-              child: Text(
-                'DEBUG: Loaded ${_taoDataList.length} Tao entries\n'
-                    'First: ${_taoDataList.first.number} - ${_taoDataList.first.title}\n'
-                    'Last: ${_taoDataList.last.number} - ${_taoDataList.last.title}',
-                style: const TextStyle(fontSize: 10, color: Colors.black87),
-              ),
-            ),
-          ],
-
+          //if (!_isLoading && _taoDataList.isNotEmpty) ...[
+          //const SizedBox(height: 20),
+          //Container(
+          //padding: const EdgeInsets.all(8),
+          //color: Colors.grey[200],
+          //child: Text(
+          //'DEBUG: Loaded ${_taoDataList.length} Tao entries\n'
+          //  'First: ${_taoDataList.first.number} - ${_taoDataList.first.title}\n'
+          //  'Last: ${_taoDataList.last.number} - ${_taoDataList.last.title}',
+          //style: const TextStyle(fontSize: 10, color: Colors.black87),
+          //),
+          //),
+          //],
         ],
       ),
     );
@@ -820,7 +867,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
   String? _currentAudioUrl;
   String? _currentAudioLabel;
 
-
   @override
   void initState() {
     super.initState();
@@ -841,6 +887,13 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
     });
   }
 
+  Future<void> _safeStopAudio() async {
+    try {
+      await _audioPlayer.stop();
+    } catch (e) {
+      print('Error stopping audio: $e');
+    }
+  }
 
   void _showNotesDialog(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -852,11 +905,16 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
           backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
           title: Text(
             'Notes for Tao ${widget.taoData.number}',
-            style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+            style: TextStyle(
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00)),
           ),
           content: SingleChildScrollView(
             child: Text(
-              widget.taoData.notes.isNotEmpty ? widget.taoData.notes : 'No notes available for this Tao.',
+              widget.taoData.notes.isNotEmpty
+                  ? widget.taoData.notes
+                  : 'No notes available for this Tao.',
               style: TextStyle(
                 color: isDarkMode ? Colors.white70 : Colors.black87,
                 height: 1.6, // Better line spacing
@@ -874,7 +932,8 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
     );
   }
 
-    Widget _buildAudioPlayer(BuildContext context, String audioUrl, String label, int index) {
+  Widget _buildAudioPlayer(
+      BuildContext context, String audioUrl, String label, int index) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     if (audioUrl.isEmpty || audioUrl == 'NULL' || audioUrl.trim().isEmpty) {
@@ -908,7 +967,8 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
     );
   }
 
-  Future<void> _playAudio(BuildContext context, String audioUrl, String label) async {
+  Future<void> _playAudio(
+      BuildContext context, String audioUrl, String label) async {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     try {
@@ -916,11 +976,14 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
       await _audioPlayer.stop();
       await _resetAudioSpeed();
 
+      if (!mounted) return;
+
       // Show loading indicator
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Loading $label...'),
-          backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFAB3300),
+          backgroundColor:
+              isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFAB3300),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -931,23 +994,28 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
       await _audioPlayer.resume();
 
       // Update state to show the player
-      setState(() {
-        _currentAudioUrl = audioUrl;
-        _currentAudioLabel = label;
-        _isPlayerVisible = true;
-        _isAudioPlaying = true;
-      });
-
+      if (mounted) {
+        setState(() {
+          _currentAudioUrl = audioUrl;
+          _currentAudioLabel = label;
+          _isPlayerVisible = true;
+          _isAudioPlaying = true;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error playing audio: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error playing audio: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
+
+
 
   // Add this method to reset speed when switching audio
   Future<void> _resetAudioSpeed() async {
@@ -960,18 +1028,25 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
 
   Widget _buildAudioDisclaimer() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00); // ← NEW
-    final iconColor = isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00);
+    final textColor =
+        isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00); // ← NEW
+    final iconColor =
+        isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00);
 
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: (isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFFFFD26F)).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8), // ← This should work for rounded corners
-        border: Border.all(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+        color: (isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFFFFD26F))
+            .withOpacity(0.1),
+        borderRadius:
+            BorderRadius.circular(8), // ← This should work for rounded corners
+        border: Border.all(
+            color:
+                isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
       ), // ← REMOVE the semicolon here
-      child: Column( // ← This should be directly after the decoration
+      child: Column(
+        // ← This should be directly after the decoration
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1022,7 +1097,9 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFAB3300),
+              backgroundColor: isDarkMode
+                  ? const Color(0xFFD45C33)
+                  : const Color(0xFFAB3300),
               duration: const Duration(seconds: 3),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -1041,7 +1118,8 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
             'Tao ${widget.taoData.number}',
             textAlign: TextAlign.center,
           ),
-          backgroundColor: isDarkMode ? const Color(0xFF5C1A00) : const Color(0xFF7E1A00),
+          backgroundColor:
+              isDarkMode ? const Color(0xFF5C1A00) : const Color(0xFF7E1A00),
           automaticallyImplyLeading: false,
           actions: [
             MenuDialogs.buildMenuButton(context),
@@ -1055,20 +1133,23 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
               Text(
                 widget.taoData.title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
-                  fontWeight: FontWeight.bold,
-                ),
+                      color: isDarkMode
+                          ? const Color(0xFFD45C33)
+                          : const Color(0xFF7E1A00),
+                      fontWeight: FontWeight.bold,
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
-
               Card(
                 color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
                 elevation: 3,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: SelectableText(
-                    widget.taoData.text.isNotEmpty ? widget.taoData.text : 'Text not available for this Tao.',
+                    widget.taoData.text.isNotEmpty
+                        ? widget.taoData.text
+                        : 'Text not available for this Tao.',
                     style: TextStyle(
                       fontSize: 16,
                       height: 1.6,
@@ -1079,7 +1160,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
               Center(
                 child: ElevatedButton.icon(
                   onPressed: () => _showNotesDialog(context),
@@ -1088,23 +1168,26 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
                 ),
               ),
               const SizedBox(height: 30),
-
               _buildAudioDisclaimer(),
               const SizedBox(height: 16),
-
               Text(
                 'Discussions:',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
-                ),
+                      color: isDarkMode
+                          ? const Color(0xFFD45C33)
+                          : const Color(0xFF7E1A00),
+                    ),
               ),
               const SizedBox(height: 10),
-
-              _buildAudioPlayer(context, widget.taoData.audio1, 'Discussion', 1),
-              _buildAudioPlayer(context, widget.taoData.audio2, 'Discussion', 2),
-              _buildAudioPlayer(context, widget.taoData.audio3, 'Discussion', 3),
-
-              if (widget.taoData.audio1.isEmpty && widget.taoData.audio2.isEmpty && widget.taoData.audio3.isEmpty)
+              _buildAudioPlayer(
+                  context, widget.taoData.audio1, 'Discussion', 1),
+              _buildAudioPlayer(
+                  context, widget.taoData.audio2, 'Discussion', 2),
+              _buildAudioPlayer(
+                  context, widget.taoData.audio3, 'Discussion', 3),
+              if (widget.taoData.audio1.isEmpty &&
+                  widget.taoData.audio2.isEmpty &&
+                  widget.taoData.audio3.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
@@ -1116,7 +1199,9 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              if (_isPlayerVisible && _currentAudioUrl != null && _currentAudioLabel != null)
+              if (_isPlayerVisible &&
+                  _currentAudioUrl != null &&
+                  _currentAudioLabel != null)
                 PersistentAudioPlayer(
                   key: ValueKey(_currentAudioUrl),
                   audioPlayer: _audioPlayer,
@@ -1132,23 +1217,29 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
                     });
                   },
                 ),
-
               const SizedBox(height: 30),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: (isDarkMode ? const Color(0xFFAB3300) : const Color(0xFF7E1A00)).withOpacity(0.1), // ← UPDATED
+                  color: (isDarkMode
+                          ? const Color(0xFFAB3300)
+                          : const Color(0xFF7E1A00))
+                      .withOpacity(0.1), // ← UPDATED
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)), // ← UPDATED
+                  border: Border.all(
+                      color: isDarkMode
+                          ? const Color(0xFFD45C33)
+                          : const Color(0xFF7E1A00)), // ← UPDATED
                 ),
                 child: Column(
                   children: [
                     Icon(
                       Icons.lightbulb_outline,
                       size: 40,
-                      color: isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00), // ← UPDATED
+                      color: isDarkMode
+                          ? const Color(0xFFFFD26F)
+                          : const Color(0xFF7E1A00), // ← UPDATED
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -1156,19 +1247,21 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontStyle: FontStyle.italic,
-                        color: isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00), // ← UPDATED
+                        color: isDarkMode
+                            ? const Color(0xFFFFD26F)
+                            : const Color(0xFF7E1A00), // ← UPDATED
                       ),
                     ),
                   ],
                 ),
               ),
-
             ],
           ),
         ),
       ),
     );
   }
+
   @override
   void dispose() {
     _audioPlayer.dispose();
@@ -1271,7 +1364,8 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
       _isSeeking = true;
     });
 
-    final newPosition = Duration(seconds: (value * _duration.inSeconds).toInt());
+    final newPosition =
+        Duration(seconds: (value * _duration.inSeconds).toInt());
     await widget.audioPlayer.seek(newPosition);
 
     setState(() {
@@ -1309,7 +1403,10 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
           backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
           title: Text(
             'Playback Speed',
-            style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+            style: TextStyle(
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00)),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1317,10 +1414,14 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
               return ListTile(
                 title: Text(
                   '${speed}x',
-                  style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+                  style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 trailing: _playbackSpeed == speed
-                    ? Icon(Icons.check, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))
+                    ? Icon(Icons.check,
+                        color: isDarkMode
+                            ? const Color(0xFFD45C33)
+                            : const Color(0xFF7E1A00))
                     : null,
                 onTap: () {
                   _changePlaybackSpeed(speed);
@@ -1348,7 +1449,9 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
       insetPadding: const EdgeInsets.all(16),
       title: Text(
         widget.title,
-        style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+        style: TextStyle(
+            color:
+                isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1356,69 +1459,85 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)).withOpacity(0.1),
+              color: (isDarkMode
+                      ? const Color(0xFFD45C33)
+                      : const Color(0xFF7E1A00))
+                  .withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+              border: Border.all(
+                  color: isDarkMode
+                      ? const Color(0xFFD45C33)
+                      : const Color(0xFF7E1A00)),
             ),
             child: Text(
               'Speed: ${_getSpeedLabel()}',
               style: TextStyle(
-                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00),
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
             ),
           ),
           const SizedBox(height: 12),
-
           Slider(
-            value: _duration.inSeconds > 0 ? _position.inSeconds / _duration.inSeconds : 0,
+            value: _duration.inSeconds > 0
+                ? _position.inSeconds / _duration.inSeconds
+                : 0,
             onChanged: _seekAudio,
             onChangeStart: (_) => _isSeeking = true,
             onChangeEnd: (_) => _isSeeking = false,
-            activeColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+            activeColor:
+                isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
             inactiveColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
           ),
           const SizedBox(height: 8),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 _formatDuration(_position),
-                style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+                style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black87),
               ),
               Text(
                 _formatDuration(_duration),
-                style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+                style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black87),
               ),
             ],
           ),
           const SizedBox(height: 16),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
                 icon: const Icon(Icons.speed, size: 28),
                 onPressed: () => _showSpeedDialog(context),
-                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00),
                 tooltip: 'Change playback speed',
               ),
-
               IconButton(
                 icon: const Icon(Icons.replay_10, size: 30),
                 onPressed: () async {
                   final newPosition = _position - const Duration(seconds: 10);
-                  await widget.audioPlayer.seek(newPosition > Duration.zero ? newPosition : Duration.zero);
+                  await widget.audioPlayer.seek(newPosition > Duration.zero
+                      ? newPosition
+                      : Duration.zero);
                 },
-                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00),
                 tooltip: 'Rewind 10 seconds',
               ),
-
               IconButton(
                 icon: Icon(
-                  _playerState == PlayerState.playing ? Icons.pause : Icons.play_arrow,
+                  _playerState == PlayerState.playing
+                      ? Icons.pause
+                      : Icons.play_arrow,
                   size: 40,
                 ),
                 onPressed: () {
@@ -1428,10 +1547,11 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
                     widget.audioPlayer.resume();
                   }
                 },
-                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00),
                 tooltip: _playerState == PlayerState.playing ? 'Pause' : 'Play',
               ),
-
               IconButton(
                 icon: const Icon(Icons.forward_10, size: 30),
                 onPressed: () async {
@@ -1440,10 +1560,11 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
                     await widget.audioPlayer.seek(newPosition);
                   }
                 },
-                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00),
                 tooltip: 'Forward 10 seconds',
               ),
-
               IconButton(
                 icon: const Icon(Icons.stop, size: 28),
                 onPressed: () async {
@@ -1456,7 +1577,9 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
                     });
                   }
                 },
-                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00),
                 tooltip: 'Stop',
               ),
             ],
@@ -1471,7 +1594,10 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
           },
           child: Text(
             'Close',
-            style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+            style: TextStyle(
+                color: isDarkMode
+                    ? const Color(0xFFD45C33)
+                    : const Color(0xFF7E1A00)),
           ),
         ),
       ],
