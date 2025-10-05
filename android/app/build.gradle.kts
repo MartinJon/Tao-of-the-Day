@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.martinjon.tao_app"
+        applicationId = "com.martinjon.taoapp"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
