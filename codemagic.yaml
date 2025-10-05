@@ -28,15 +28,32 @@ workflows:
       groups:
         - app_store_credentials
     scripts:
-      - name: Create distribution certificate
+      - name: Set up keychain
         script: |
           keychain initialize
-          app-store-connect create-certificate --type IOS_DISTRIBUTION
-          echo "=== Available Certificates After Creation ==="
+      - name: Fetch signing certificates
+        script: |
+          app-store-connect fetch-signing-files $(xcode-project detect-bundle-id) --type IOS_APP_STORE --create
+      - name: Set up code signing
+        script: |
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Show certificates
+        script: |
+          echo "=== Available Certificates ==="
           security find-identity -v -p codesigning
       - name: Build iOS
         script: |
-          flutter build ipa --release
+          flutter pub get
+          flutter build ipa --release --no-codesign
+      - name: Code sign manually
+        script: |
+          cd build/ios/ipa
+          xcodebuild -exportArchive \
+            -archivePath Runner.xcarchive \
+            -exportOptionsPlist ../../ios/Runner/ExportOptions.plist \
+            -exportPath . \
+            -allowProvisioningUpdates
     artifacts:
       - build/ios/ipa/*.ipa
     publishing:
