@@ -28,6 +28,8 @@
         - app_store_credentials
       vars:
         BUNDLE_ID: "com.martinjon.taoapp"
+        APPLE_ID: "$APPLE_ID"  # ← Add this line
+        APP_SPECIFIC_PASSWORD: "$APP_SPECIFIC_PASSWORD"  # ← Add this line
     scripts:
       - name: List available certificates
         script: |
@@ -38,12 +40,10 @@
       - name: Build iOS for App Store
         script: |
           flutter build ipa --release
-    artifacts:
-      - build/ios/ipa/*.ipa
     publishing:
       app_store_connect:
-        username: "mjongarcia@gmail.com"
-        password: "pcjb-auki-nyhm-ebgf"
+        username: "$APPLE_ID"
+        password: "$APP_SPECIFIC_PASSWORD"
         submit_to_testflight: true
       email:
         recipients:
