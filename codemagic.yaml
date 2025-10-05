@@ -1,23 +1,24 @@
-﻿workflows:
-  flutter-app:
-    name: Build Android APK & iOS
-    environment:
-      flutter: stable
-    scripts:
-      - name: Get packages
-        script: flutter pub get
-      - name: Build Android APK
-        script: flutter build apk --release
-      - name: Build iOS
-        script: flutter build ipa --release
-    artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
-      - build/ios/ipa/*.ipa
-    publishing:
-      email:
-        recipients:
-          - mjongarcia@gmail.com
+﻿# workflows:
+#   flutter-app:
+#     name: Build Android APK & iOS
+#     environment:
+#       flutter: stable
+#     scripts:
+#       - name: Get packages
+#         script: flutter pub get
+#       - name: Build Android APK
+#         script: flutter build apk --release
+#       - name: Build iOS
+#         script: flutter build ipa --release
+#     artifacts:
+#       - build/app/outputs/flutter-apk/app-release.apk
+#       - build/ios/ipa/*.ipa
+#     publishing:
+#       email:
+#         recipients:
+#           - mjongarcia@gmail.com
 
+workflows:
   ios-release:
     name: iOS Release to App Store
     environment:
