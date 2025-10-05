@@ -28,13 +28,13 @@
         - app_store_credentials
       vars:
         BUNDLE_ID: "com.martinjon.taoapp"
-        APP_STORE_CONNECT_ISSUER_ID: "$APP_STORE_CONNECT_ISSUER_ID"
-        APP_STORE_CONNECT_KEY_IDENTIFIER: "$APP_STORE_CONNECT_KEY_IDENTIFIER"
-        APP_STORE_CONNECT_PRIVATE_KEY: "$APP_STORE_CONNECT_PRIVATE_KEY"
     scripts:
       - name: Set up code signing
         script: |
           keychain initialize
+      - name: Fetch signing certificates
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE
       - name: Build iOS for App Store
         script: |
           flutter build ipa --release
