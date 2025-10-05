@@ -28,12 +28,21 @@ workflows:
       groups:
         - app_store_credentials
     scripts:
-      - name: Setup Code Signing
+      - name: Setup Code Signing with Debugging
         script: |
           keychain initialize
+          echo "=== Before fetching signing files ==="
+          echo "Bundle ID: com.martinjon.taoapp"
+          echo "=== Fetching signing files ==="
           app-store-connect fetch-signing-files "com.martinjon.taoapp" --type IOS_APP_STORE --create
+          echo "=== After fetching signing files ==="
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+          echo "=== Adding certificates ==="
           keychain add-certificates
+          echo "=== Using profiles ==="
           xcode-project use-profiles
+          echo "=== Available certificates ==="
+          security find-identity -v -p codesigning
       - name: Build iOS
         script: |
           flutter pub get
