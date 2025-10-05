@@ -31,6 +31,7 @@ void main() async {
   }
 }
 
+
 // Helper function to load Tao data and launch app directly to detail page
 Future<void> _loadTaoDataAndLaunchApp(int taoNumber) async {
   try {

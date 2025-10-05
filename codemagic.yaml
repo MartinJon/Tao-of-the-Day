@@ -9,11 +9,33 @@
       - name: Build Android APK
         script: flutter build apk --release
       - name: Build iOS
-        script: flutter build ios --release --no-codesign
+        script: flutter build ipa --release
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
       - build/ios/ipa/*.ipa
     publishing:
+      email:
+        recipients:
+          - mjongarcia@gmail.com
+
+  ios-release:
+    name: iOS Release to App Store
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "com.martinjon.taoapp"
+    scripts:
+      - name: Build iOS for App Store
+        script: |
+          flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        username: "mjongarcia@gmail.com"
+        password: "$APP_SPECIFIC_PASSWORD"
       email:
         recipients:
           - mjongarcia@gmail.com

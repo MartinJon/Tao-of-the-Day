@@ -24,13 +24,6 @@ class MenuDialogs {
           ),
         ),
         const PopupMenuItem<String>(
-          value: 'tao_journey',
-          child: ListTile(
-            leading: Icon(Icons.auto_awesome),
-            title: Text('Tao Journey Settings'),
-          ),
-        ),
-        const PopupMenuItem<String>(
           value: 'noomvibe',
           child: ListTile(
             leading: Icon(Icons.live_tv),

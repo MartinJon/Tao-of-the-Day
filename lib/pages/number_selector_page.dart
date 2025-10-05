@@ -462,9 +462,11 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                 label: const Text('Random Tao'),
               ),
               ElevatedButton.icon(
-                onPressed: (_isButtonEnabled && !_isLoading) ? () => _navigateToTaoDetail(_selectedNumber) : null,
+                onPressed: (_isButtonEnabled && !_isLoading)
+                    ? () => _navigateToTaoDetail(_selectedNumber)
+                    : null,
                 icon: const Icon(Icons.arrow_forward),
-                label: const Text('Explore Tao'),
+                label: Text('Explore Tao $_selectedNumber'), // ← UPDATED LINE
               ),
             ],
           ),
