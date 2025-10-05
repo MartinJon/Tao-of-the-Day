@@ -27,24 +27,23 @@ workflows:
       cocoapods: default
       groups:
         - app_store_credentials
-      vars:
-        BUNDLE_ID: "com.martinjon.taoapp"
-        APPLE_ID: "$APPLE_ID"  # ← Add this line
-        APP_SPECIFIC_PASSWORD: "$APP_SPECIFIC_PASSWORD"  # ← Add this line
     scripts:
-      - name: List available certificates
+      - name: Create distribution certificate
         script: |
           keychain initialize
-          echo "=== Available Signing Certificates ==="
+          app-store-connect create-certificate --type IOS_DISTRIBUTION
+          echo "=== Available Certificates After Creation ==="
           security find-identity -v -p codesigning
-          echo "=== End Certificate List ==="
-      - name: Build iOS for App Store
+      - name: Build iOS
         script: |
           flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
     publishing:
       app_store_connect:
-        username: "$APPLE_ID"
-        password: "$APP_SPECIFIC_PASSWORD"
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
       email:
         recipients:
