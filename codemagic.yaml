@@ -28,6 +28,18 @@ workflows:
       groups:
         - app_store_credentials
     scripts:
+      - name: Create Certificate Manually
+        script: |
+          keychain initialize
+          echo "=== Creating distribution certificate ==="
+          app-store-connect create-certificate --type IOS_DISTRIBUTION --save-path ./dist_cert.p12
+          echo "=== Creating provisioning profile ==="
+          app-store-connect create-profile --type IOS_APP_STORE --bundle-id "com.martinjon.taoapp" --certificates-path ./dist_cert.p12 --save-path ./profile.mobileprovision
+          echo "=== Setting up code signing ==="
+          keychain add-certificates
+          xcode-project use-profiles
+          echo "=== Available certificates ==="
+          security find-identity -v -p codesigning
       - name: Build iOS
         script: |
           flutter pub get
