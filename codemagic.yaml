@@ -42,8 +42,9 @@
       - build/ios/ipa/*.ipa
     publishing:
       app_store_connect:
-        username: "$APPLE_ID"
-        password: "$APP_SPECIFIC_PASSWORD"
+        username: "mjongarcia@gmail.com"
+        password: "pcjb-auki-nyhm-ebgf"
+        submit_to_testflight: true
       email:
         recipients:
           - mjongarcia@gmail.com
