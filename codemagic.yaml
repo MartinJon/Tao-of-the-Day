@@ -28,17 +28,15 @@ workflows:
       groups:
         - app_store_credentials
     scripts:
-      - name: Create Certificate Manually
+      - name: Force Certificate Creation
         script: |
           keychain initialize
-          echo "=== Creating distribution certificate ==="
-          app-store-connect create-certificate --type IOS_DISTRIBUTION --save-path ./dist_cert.p12
-          echo "=== Creating provisioning profile ==="
-          app-store-connect create-profile --type IOS_APP_STORE --bundle-id "com.martinjon.taoapp" --certificates-path ./dist_cert.p12 --save-path ./profile.mobileprovision
-          echo "=== Setting up code signing ==="
+          echo "=== Attempting certificate creation ==="
+          app-store-connect fetch-signing-files "com.martinjon.taoapp" --type IOS_APP_STORE --create --verbose
+          echo "=== Certificate creation result: $? ==="
           keychain add-certificates
           xcode-project use-profiles
-          echo "=== Available certificates ==="
+          echo "=== Final certificate check ==="
           security find-identity -v -p codesigning
       - name: Build iOS
         script: |
