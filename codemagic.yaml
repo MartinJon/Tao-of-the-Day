@@ -1,4 +1,4 @@
-﻿workflows:
+﻿woworkflows:
   android-release:
     name: Android Release (with underscore)
     environment:
@@ -13,6 +13,10 @@
           
           # Create the keystore file from base64 environment variable
           echo $CM_KEYSTORE | base64 --decode > android/app/upload-keystore.jks
+          
+          # Verify the keystore was created
+          ls -la android/app/upload-keystore.jks
+          echo "Keystore file created successfully"
           
           # Build with underscore package name
           flutter build appbundle --release
