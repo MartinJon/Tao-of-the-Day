@@ -1,4 +1,4 @@
-﻿woworkflows:
+﻿workflows:
   android-release:
     name: Android Release (with underscore)
     environment:
