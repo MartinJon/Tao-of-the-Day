@@ -16,7 +16,7 @@ class NumberSelectorPage extends StatefulWidget {
 }
 
 class _NumberSelectorPageState extends State<NumberSelectorPage> {
-  int _selectedNumber = 1;
+  int? _selectedNumber; // Change from int to int? to allow null
   List<TaoData> _taoDataList = [];
   bool _isButtonEnabled = true;
   bool _isLoading = false;
@@ -462,11 +462,15 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
                 label: const Text('Random Tao'),
               ),
               ElevatedButton.icon(
-                onPressed: (_isButtonEnabled && !_isLoading)
-                    ? () => _navigateToTaoDetail(_selectedNumber)
+                onPressed: (_isButtonEnabled && _selectedNumber != null)
+                    ? () => _navigateToTaoDetail(_selectedNumber!)
                     : null,
                 icon: const Icon(Icons.arrow_forward),
-                label: Text('Explore Tao $_selectedNumber'), // ← UPDATED LINE
+                label: Text(
+                  _selectedNumber != null
+                      ? 'Explore Tao $_selectedNumber'
+                      : 'Select a number',
+                ),
               ),
             ],
           ),
