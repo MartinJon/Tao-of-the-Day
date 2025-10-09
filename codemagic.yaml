@@ -1,55 +1,52 @@
-﻿# workflows:
-#   flutter-app:
-#     name: Build Android APK & iOS
-#     environment:
-#       flutter: stable
-#     scripts:
-#       - name: Get packages
-#         script: flutter pub get
-#       - name: Build Android APK
-#         script: flutter build apk --release
-#       - name: Build iOS
-#         script: flutter build ipa --release
-#     artifacts:
-#       - build/app/outputs/flutter-apk/app-release.apk
-#       - build/ios/ipa/*.ipa
-#     publishing:
-#       email:
-#         recipients:
-#           - mjongarcia@gmail.com
-
-workflows:
-  ios-release:
-    name: iOS Release to App Store
+﻿workflows:
+  # Android with underscore
+  android-release:
+    name: Android Release (with underscore)
     environment:
       flutter: stable
-      xcode: latest
-      cocoapods: default
-      groups:
-        - app_store_credentials
     scripts:
-      - name: Force Certificate Creation
+      - name: Build Android with underscore
         script: |
-          keychain initialize
-          echo "=== Attempting certificate creation ==="
-          app-store-connect fetch-signing-files "com.martinjon.taoapp" --type IOS_APP_STORE --create --verbose
-          echo "=== Certificate creation result: $? ==="
-          keychain add-certificates
-          xcode-project use-profiles
-          echo "=== Final certificate check ==="
-          security find-identity -v -p codesigning
-      - name: Build iOS
-        script: |
+          flutter clean
           flutter pub get
-          flutter build ipa --release
+          # Build with underscore package name
+          flutter build appbundle --release
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/app/outputs/bundle/release/app-release.aab
     publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
       email:
         recipients:
           - mjongarcia@gmail.com
+
+#  # iOS without underscore
+#  ios-release:
+#    name: iOS Release (no underscore)
+#    environment:
+#      flutter: stable
+#      xcode: latest
+#      cocoapods: default
+#      groups:
+#        - app_store_credentials
+#    scripts:
+#      - name: Setup Code Signing
+#        script: |
+#          keychain initialize
+#          app-store-connect fetch-signing-files "com.martinjon.taoapp" --type IOS_APP_STORE --create
+#          keychain add-certificates
+#          xcode-project use-profiles
+#      - name: Build iOS without underscore
+#        script: |
+#          flutter clean
+#          flutter pub get
+#          flutter build ipa --release
+#    artifacts:
+#      - build/ios/ipa/*.ipa
+#    publishing:
+#      app_store_connect:
+#        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+#        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+#        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+#        submit_to_testflight: true
+#      email:
+#        recipients:
+#          - mjongarcia@gmail.com

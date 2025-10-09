@@ -291,20 +291,15 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> {
                         try {
                           if (_playerState == PlayerState.playing) {
                             await widget.audioPlayer.pause();
-                            // Force state update
-                            if (mounted) {
-                              setState(() {
-                                _playerState = PlayerState.paused;
-                              });
-                            }
                           } else {
                             await widget.audioPlayer.resume();
-                            // Force state update
-                            if (mounted) {
-                              setState(() {
-                                _playerState = PlayerState.playing;
-                              });
-                            }
+                          }
+                          // Force state refresh
+                          final currentState = await widget.audioPlayer.state;
+                          if (mounted) {
+                            setState(() {
+                              _playerState = currentState;
+                            });
                           }
                         } catch (e) {
                           print('Play/Pause error: $e');
@@ -314,8 +309,6 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> {
                           }
                         }
                       },
-                      color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
-                      tooltip: _playerState == PlayerState.playing ? 'Pause' : 'Play',
                     ),
                     if (_isLoading)
                       Positioned(

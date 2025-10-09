@@ -6,7 +6,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:tao_app_fixed_clean/models/tao_data.dart';
 import 'package:tao_app_fixed_clean/menu_dialogs.dart';
 import 'package:tao_app_fixed_clean/audio_player.dart';
-import '../models/tao_data.dart';
 
 class TaoDetailPage extends StatefulWidget {
   final TaoData taoData;
@@ -17,7 +16,7 @@ class TaoDetailPage extends StatefulWidget {
   _TaoDetailPageState createState() => _TaoDetailPageState();
 }
 
-class _TaoDetailPageState extends State<TaoDetailPage> {
+class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserver {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isAudioPlaying = false;
   bool _isPlayerVisible = false;
@@ -27,11 +26,35 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupAudioPlayer();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _safeStopAudio();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  // This handles phone calls, app switching, etc.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    print('App lifecycle state changed: $state');
+
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // App going to background or interrupted by phone call
+      _pauseAudio();
+    } else if (state == AppLifecycleState.resumed) {
+      // App coming back to foreground - refresh the audio state
+      _refreshAudioState();
+    }
   }
 
   void _setupAudioPlayer() {
     _audioPlayer.onPlayerStateChanged.listen((PlayerState state) {
+      print('Audio player state: $state');
       if (mounted) {
         setState(() {
           _isAudioPlaying = state == PlayerState.playing;
@@ -40,6 +63,7 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
     });
 
     _audioPlayer.onPlayerComplete.listen((event) {
+      print('Audio completed');
       if (mounted) {
         setState(() {
           _isAudioPlaying = false;
@@ -48,9 +72,81 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
     });
   }
 
+  Future<void> _refreshAudioState() async {
+    try {
+      final state = await _audioPlayer.state;
+      print('Refreshed audio state: $state');
+      if (mounted) {
+        setState(() {
+          _isAudioPlaying = state == PlayerState.playing;
+        });
+      }
+    } catch (e) {
+      print('Error refreshing audio state: $e');
+    }
+  }
+
+  Future<void> _playAudio(BuildContext context, String audioUrl, String label) async {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    try {
+      await _safeStopAudio();
+      await _resetAudioSpeed();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Loading $label...'),
+          backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFAB3300),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      await _audioPlayer.setSource(UrlSource(audioUrl));
+      await _audioPlayer.setPlaybackRate(1.0);
+      await _audioPlayer.resume();
+
+      if (mounted) {
+        setState(() {
+          _currentAudioUrl = audioUrl;
+          _currentAudioLabel = label;
+          _isPlayerVisible = true;
+          _isAudioPlaying = true;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error playing audio: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _pauseAudio() async {
+    try {
+      print('Pausing audio...');
+      await _audioPlayer.pause();
+      if (mounted) {
+        setState(() {
+          _isAudioPlaying = false;
+        });
+      }
+    } catch (e) {
+      print('Error pausing audio: $e');
+    }
+  }
+
   Future<void> _safeStopAudio() async {
     try {
+      print('Stopping audio...');
       await _audioPlayer.stop();
+      if (mounted) {
+        setState(() {
+          _isAudioPlaying = false;
+        });
+      }
     } catch (e) {
       print('Error stopping audio: $e');
     }
@@ -128,43 +224,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
         onTap: () => _playAudio(context, audioUrl, '$label $index'),
       ),
     );
-  }
-
-  Future<void> _playAudio(BuildContext context, String audioUrl, String label) async {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    try {
-      await _safeStopAudio();
-      await _resetAudioSpeed();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Loading $label...'),
-          backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFAB3300),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      await _audioPlayer.setSource(UrlSource(audioUrl));
-      await _audioPlayer.setPlaybackRate(1.0);
-      await _audioPlayer.resume();
-
-      setState(() {
-        _currentAudioUrl = audioUrl;
-        _currentAudioLabel = label;
-        _isPlayerVisible = true;
-        _isAudioPlaying = true;
-      });
-
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error playing audio: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
   }
 
   Widget _buildAudioDisclaimer() {
@@ -376,12 +435,5 @@ class _TaoDetailPageState extends State<TaoDetailPage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _safeStopAudio();
-    _audioPlayer.dispose();
-    super.dispose();
   }
 }
