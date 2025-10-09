@@ -3,6 +3,9 @@
   android-release:
     name: Android Release (with underscore)
     environment:
+      groups:
+        # Add your signing credentials as environment variables
+        - android_signing
       flutter: stable
     scripts:
       - name: Build Android with underscore
