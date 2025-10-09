@@ -1,10 +1,8 @@
 ﻿workflows:
-  # Android with underscore
   android-release:
     name: Android Release (with underscore)
     environment:
       groups:
-        # Add your signing credentials as environment variables
         - android_signing
       flutter: stable
     scripts:
@@ -12,6 +10,10 @@
         script: |
           flutter clean
           flutter pub get
+          
+          # Create the keystore file from base64 environment variable
+          echo $CM_KEYSTORE | base64 --decode > android/app/upload-keystore.jks
+          
           # Build with underscore package name
           flutter build appbundle --release
     artifacts:
