@@ -29,12 +29,12 @@ android {
     signingConfigs {
         create("release") {
             // This will work with both local development and CodeMagic
-            if (System.getenv("CM_KEYSTORE")) {
+            if (System.getenv("CM_KEYSTORE") != null) {
                 // CodeMagic environment - file will be created from base64
                 storeFile = file("upload-keystore.jks")
-                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("CM_KEY_ALIAS")
-                keyPassword = System.getenv("CM_KEY_PASSWORD")
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("CM_KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("CM_KEY_PASSWORD") ?: ""
             } else {
                 // Local development
                 storeFile = file("upload-keystore.jks")
