@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class MenuDialogs {
+  static const String appVersion = '1.0.0';
   // Menu button widget
   static PopupMenuButton<String> buildMenuButton(BuildContext context) {
     return PopupMenuButton<String>(
@@ -166,6 +168,32 @@ class MenuDialogs {
                       'Toggle "Track your selections" to see which chapters you\'ve explored and focus on new ones. '
                       'Your journey is saved locally on your device.',
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'App Version: $appVersion', // ← Simple static version
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
