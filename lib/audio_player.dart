@@ -19,7 +19,7 @@ class PersistentAudioPlayer extends StatefulWidget {
   _PersistentAudioPlayerState createState() => _PersistentAudioPlayerState();
 }
 
-class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> {
+class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> with WidgetsBindingObserver {
   PlayerState _playerState = PlayerState.stopped;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
@@ -39,8 +39,62 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupAudioPlayer();
     _getInitialState();
+    _configureAudioSession();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Reset speed when player is disposed
+    widget.audioPlayer.setPlaybackRate(1.0);
+    super.dispose();
+  }
+
+  // Handle app lifecycle (phone sleep, app background)
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    print('App lifecycle state changed: $state');
+
+    if (state == AppLifecycleState.paused) {
+      // App going to background - audio should continue
+      print('App backgrounded - audio should continue playing');
+    } else if (state == AppLifecycleState.resumed) {
+      // App coming to foreground - refresh audio state
+      _refreshAudioState();
+    }
+  }
+
+  Future<void> _configureAudioSession() async {
+    try {
+      // Configure for background audio playback - SIMPLIFIED VERSION
+      await widget.audioPlayer.setAudioContext(const AudioContext(
+        android: AudioContextAndroid(
+          contentType: AndroidContentType.music,
+          // Removed problematic usage parameter
+          stayAwake: true, // Keep phone awake for audio
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+        ),
+      ));
+      print('✅ Audio session configured for background playback');
+    } catch (e) {
+      print('❌ Error configuring audio session: $e');
+      // Try a simpler configuration as fallback
+      try {
+        await widget.audioPlayer.setAudioContext(const AudioContext(
+          android: AudioContextAndroid(
+            contentType: AndroidContentType.music,
+          ),
+        ));
+        print('✅ Fallback audio session configured');
+      } catch (e2) {
+        print('❌ Fallback audio configuration also failed: $e2');
+      }
+    }
   }
 
   void _setupAudioPlayer() {
@@ -93,6 +147,22 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> {
       }
     } catch (e) {
       print('Error getting initial state: $e');
+    }
+  }
+
+  Future<void> _refreshAudioState() async {
+    try {
+      final state = await widget.audioPlayer.state;
+      final position = await widget.audioPlayer.getCurrentPosition();
+
+      if (mounted) {
+        setState(() {
+          _playerState = state;
+          _position = position ?? Duration.zero;
+        });
+      }
+    } catch (e) {
+      print('Error refreshing audio state: $e');
     }
   }
 
@@ -291,15 +361,20 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> {
                         try {
                           if (_playerState == PlayerState.playing) {
                             await widget.audioPlayer.pause();
+                            // Force state update
+                            if (mounted) {
+                              setState(() {
+                                _playerState = PlayerState.paused;
+                              });
+                            }
                           } else {
                             await widget.audioPlayer.resume();
-                          }
-                          // Force state refresh
-                          final currentState = await widget.audioPlayer.state;
-                          if (mounted) {
-                            setState(() {
-                              _playerState = currentState;
-                            });
+                            // Force state update
+                            if (mounted) {
+                              setState(() {
+                                _playerState = PlayerState.playing;
+                              });
+                            }
                           }
                         } catch (e) {
                           print('Play/Pause error: $e');
@@ -309,6 +384,8 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> {
                           }
                         }
                       },
+                      color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                      tooltip: _playerState == PlayerState.playing ? 'Pause' : 'Play',
                     ),
                     if (_isLoading)
                       Positioned(
@@ -384,12 +461,5 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> {
         );
       },
     );
-  }
-
-  @override
-  void dispose() {
-    // Reset speed when player is disposed
-    widget.audioPlayer.setPlaybackRate(1.0);
-    super.dispose();
   }
 }

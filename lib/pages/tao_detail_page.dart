@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:tao_app_fixed_clean/models/tao_data.dart';
 import 'package:tao_app_fixed_clean/menu_dialogs.dart';
 import 'package:tao_app_fixed_clean/audio_player.dart';
+import '/better_audio_player.dart'; // ← Add this import'
 
 class TaoDetailPage extends StatefulWidget {
   final TaoData taoData;
@@ -17,7 +18,7 @@ class TaoDetailPage extends StatefulWidget {
 }
 
 class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserver {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+
   bool _isAudioPlaying = false;
   bool _isPlayerVisible = false;
   String? _currentAudioUrl;
@@ -27,14 +28,15 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _setupAudioPlayer();
+
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _safeStopAudio();
-    _audioPlayer.dispose();
+    // REMOVE THESE LINES:
+    // _safeStopAudio();
+    // _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -43,56 +45,21 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
   void didChangeAppLifecycleState(AppLifecycleState state) {
     print('App lifecycle state changed: $state');
 
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      // App going to background or interrupted by phone call
-      _pauseAudio();
-    } else if (state == AppLifecycleState.resumed) {
-      // App coming back to foreground - refresh the audio state
-      _refreshAudioState();
-    }
+    // DELETE these lines - BetterAudioPlayer handles background audio automatically
+    // if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    //   _pauseAudio();
+    // } else if (state == AppLifecycleState.resumed) {
+    //   _refreshAudioState();
+    // }
   }
 
-  void _setupAudioPlayer() {
-    _audioPlayer.onPlayerStateChanged.listen((PlayerState state) {
-      print('Audio player state: $state');
-      if (mounted) {
-        setState(() {
-          _isAudioPlaying = state == PlayerState.playing;
-        });
-      }
-    });
 
-    _audioPlayer.onPlayerComplete.listen((event) {
-      print('Audio completed');
-      if (mounted) {
-        setState(() {
-          _isAudioPlaying = false;
-        });
-      }
-    });
-  }
 
-  Future<void> _refreshAudioState() async {
-    try {
-      final state = await _audioPlayer.state;
-      print('Refreshed audio state: $state');
-      if (mounted) {
-        setState(() {
-          _isAudioPlaying = state == PlayerState.playing;
-        });
-      }
-    } catch (e) {
-      print('Error refreshing audio state: $e');
-    }
-  }
 
   Future<void> _playAudio(BuildContext context, String audioUrl, String label) async {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     try {
-      await _safeStopAudio();
-      await _resetAudioSpeed();
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Loading $label...'),
@@ -101,64 +68,26 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
         ),
       );
 
-      await _audioPlayer.setSource(UrlSource(audioUrl));
-      await _audioPlayer.setPlaybackRate(1.0);
-      await _audioPlayer.resume();
+      // JUST show the BetterAudioPlayer - no audio operations here!
+      setState(() {
+        _currentAudioUrl = audioUrl;
+        _currentAudioLabel = label;
+        _isPlayerVisible = true;
+        _isAudioPlaying = true;
+      });
 
-      if (mounted) {
-        setState(() {
-          _currentAudioUrl = audioUrl;
-          _currentAudioLabel = label;
-          _isPlayerVisible = true;
-          _isAudioPlaying = true;
-        });
-      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error playing audio: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
         ),
       );
     }
   }
 
-  Future<void> _pauseAudio() async {
-    try {
-      print('Pausing audio...');
-      await _audioPlayer.pause();
-      if (mounted) {
-        setState(() {
-          _isAudioPlaying = false;
-        });
-      }
-    } catch (e) {
-      print('Error pausing audio: $e');
-    }
-  }
 
-  Future<void> _safeStopAudio() async {
-    try {
-      print('Stopping audio...');
-      await _audioPlayer.stop();
-      if (mounted) {
-        setState(() {
-          _isAudioPlaying = false;
-        });
-      }
-    } catch (e) {
-      print('Error stopping audio: $e');
-    }
-  }
 
-  Future<void> _resetAudioSpeed() async {
-    try {
-      await _audioPlayer.setPlaybackRate(1.0);
-    } catch (e) {
-      print('Error resetting speed: $e');
-    }
-  }
 
   void _showNotesDialog(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -275,7 +204,7 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
 
     return WillPopScope(
       onWillPop: () async {
-        await _safeStopAudio();
+        //await _safeStopAudio();
         final currentDate = DateFormat('yyyyMMdd').format(DateTime.now());
         final prefs = await SharedPreferences.getInstance();
         final selectedDate = prefs.getString('selectedNumberDate') ?? '';
@@ -384,22 +313,22 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
                     textAlign: TextAlign.center,
                   ),
                 ),
-              if (_isPlayerVisible && _currentAudioUrl != null && _currentAudioLabel != null)
-                PersistentAudioPlayer(
-                  key: ValueKey(_currentAudioUrl),
-                  audioPlayer: _audioPlayer,
-                  title: _currentAudioLabel!,
-                  audioUrl: _currentAudioUrl!,
-                  onClose: () async {
-                    await _safeStopAudio();
-                    setState(() {
-                      _isPlayerVisible = false;
-                      _currentAudioUrl = null;
-                      _currentAudioLabel = null;
-                      _isAudioPlaying = false;
-                    });
-                  },
-                ),
+
+
+                if (_isPlayerVisible && _currentAudioUrl != null && _currentAudioLabel != null)
+                  BetterAudioPlayer(
+                    key: ValueKey(_currentAudioUrl),
+                    title: _currentAudioLabel!,
+                    audioUrl: _currentAudioUrl!,
+                    onClose: () async {
+                      setState(() {
+                        _isPlayerVisible = false;
+                        _currentAudioUrl = null;
+                        _currentAudioLabel = null;
+                        _isAudioPlaying = false;
+                      });
+                    },
+                  ),
 
               const SizedBox(height: 30),
 
