@@ -1,3 +1,5 @@
+// audio_background_service.dart - TEMPORARILY COMMENTED OUT
+/*
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart';
 
@@ -44,3 +46,4 @@ class AudioBackgroundService {
 
   static AudioPlayer get player => _audioPlayer;
 }
+*/

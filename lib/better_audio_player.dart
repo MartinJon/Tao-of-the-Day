@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:audio_session/audio_session.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class BetterAudioPlayer extends StatefulWidget {
   final String title;
@@ -20,14 +19,13 @@ class BetterAudioPlayer extends StatefulWidget {
 
 class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
   final AudioPlayer _audioPlayer = AudioPlayer();
-  PlayerState _playerState = PlayerState(false, ProcessingState.idle);
+  PlayerState _playerState = PlayerState.stopped;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   bool _isSeeking = false;
   bool _isLoading = false;
   double _playbackSpeed = 1.0;
   final List<double> _availableSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
-  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -38,25 +36,17 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
 
   Future<void> _initializeAudioAndPlay() async {
     try {
-      // Configure audio session for background playback
-      final session = await AudioSession.instance;
-      await session.configure(const AudioSessionConfiguration(
-        avAudioSessionCategory: AVAudioSessionCategory.playback,
-        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.duckOthers,
-        androidAudioAttributes: AndroidAudioAttributes(
-          contentType: AndroidAudioContentType.music,
-          usage: AndroidAudioUsage.media,
-        ),
-        androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
-        androidWillPauseWhenDucked: true,
-      ));
-
-      // Set up the audio source and auto-play
       setState(() => _isLoading = true);
-      await _audioPlayer.setUrl(widget.audioUrl);
-      await _audioPlayer.play(); // Auto-play immediately
+
+      // Configure for better audio handling
+      await _audioPlayer.setSource(UrlSource(widget.audioUrl));
+
+      // Get duration first
+      _duration = await _audioPlayer.getDuration() ?? Duration.zero;
+
+      // Auto-play
+      await _audioPlayer.resume();
       setState(() => _isLoading = false);
-      _isInitialized = true;
 
     } catch (e) {
       print('Error initializing and playing audio: $e');
@@ -65,24 +55,23 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
   }
 
   void _setupAudioPlayer() {
-    _audioPlayer.playerStateStream.listen((state) {
+    _audioPlayer.onPlayerStateChanged.listen((state) {
       if (mounted) {
         setState(() {
           _playerState = state;
-          _isLoading = state.processingState == ProcessingState.loading;
         });
       }
     });
 
-    _audioPlayer.durationStream.listen((duration) {
+    _audioPlayer.onDurationChanged.listen((duration) {
       if (mounted) {
         setState(() {
-          _duration = duration ?? Duration.zero;
+          _duration = duration;
         });
       }
     });
 
-    _audioPlayer.positionStream.listen((position) {
+    _audioPlayer.onPositionChanged.listen((position) {
       if (mounted && !_isSeeking) {
         setState(() {
           _position = position;
@@ -93,13 +82,8 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
 
   Future<void> _playAudio() async {
     try {
-      // Only set URL if not already initialized
-      if (!_isInitialized) {
-        setState(() => _isLoading = true);
-        await _audioPlayer.setUrl(widget.audioUrl);
-        _isInitialized = true;
-      }
-      await _audioPlayer.play();
+      setState(() => _isLoading = true);
+      await _audioPlayer.resume();
     } catch (e) {
       print('Error playing audio: $e');
     } finally {
@@ -112,7 +96,6 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
   Future<void> _pauseAudio() async {
     try {
       await _audioPlayer.pause();
-      // Position is preserved automatically - no reset needed!
     } catch (e) {
       print('Error pausing audio: $e');
     }
@@ -120,7 +103,7 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
 
   Future<void> _changePlaybackSpeed(double speed) async {
     try {
-      await _audioPlayer.setSpeed(speed);
+      await _audioPlayer.setPlaybackRate(speed);
       setState(() {
         _playbackSpeed = speed;
       });
@@ -160,6 +143,7 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isPlaying = _playerState == PlayerState.playing;
 
     return Card(
       elevation: 4,
@@ -231,23 +215,23 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
                 IconButton(
                   icon: const Icon(Icons.speed),
                   onPressed: () => _showSpeedDialog(context),
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // EXPLICIT COLOR
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
                 ),
                 IconButton(
                   icon: const Icon(Icons.replay_10),
                   onPressed: () => _audioPlayer.seek(_position - const Duration(seconds: 10)),
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // EXPLICIT COLOR
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
                 ),
                 IconButton(
-                  icon: Icon(_playerState.playing ? Icons.pause : Icons.play_arrow),
-                  onPressed: _playerState.playing ? _pauseAudio : _playAudio,
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // EXPLICIT COLOR
+                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                  onPressed: isPlaying ? _pauseAudio : _playAudio,
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
                   iconSize: 40,
                 ),
                 IconButton(
                   icon: const Icon(Icons.forward_10),
                   onPressed: () => _audioPlayer.seek(_position + const Duration(seconds: 10)),
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // EXPLICIT COLOR
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
                 ),
               ],
             ),
