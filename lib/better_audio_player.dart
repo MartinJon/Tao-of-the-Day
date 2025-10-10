@@ -231,23 +231,23 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
                 IconButton(
                   icon: const Icon(Icons.speed),
                   onPressed: () => _showSpeedDialog(context),
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // EXPLICIT COLOR
                 ),
                 IconButton(
                   icon: const Icon(Icons.replay_10),
                   onPressed: () => _audioPlayer.seek(_position - const Duration(seconds: 10)),
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // EXPLICIT COLOR
                 ),
                 IconButton(
                   icon: Icon(_playerState.playing ? Icons.pause : Icons.play_arrow),
                   onPressed: _playerState.playing ? _pauseAudio : _playAudio,
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // EXPLICIT COLOR
                   iconSize: 40,
                 ),
                 IconButton(
                   icon: const Icon(Icons.forward_10),
                   onPressed: () => _audioPlayer.seek(_position + const Duration(seconds: 10)),
-                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                  color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), // EXPLICIT COLOR
                 ),
               ],
             ),

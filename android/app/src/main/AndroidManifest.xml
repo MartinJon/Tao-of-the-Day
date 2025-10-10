@@ -5,12 +5,16 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- ADD THIS FOR BACKGROUND AUDIO -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:label="tao_app_fixed"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- ADD THIS FOR BACKGROUND AUDIO PLAYBACK -->
+
 
         <activity
             android:name=".MainActivity"
@@ -31,15 +35,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <!-- ADD THIS FOR BACKGROUND AUDIO PLAYBACK -->
-        <service
-            android:name="com.ryanheise.audioservice.AudioService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.media.browse.MediaBrowserService" />
-            </intent-filter>
-        </service>
 
         <meta-data
             android:name="flutterEmbedding"
