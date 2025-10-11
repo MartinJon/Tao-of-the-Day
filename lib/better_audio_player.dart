@@ -26,6 +26,7 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> with WidgetsBindi
   bool _isLoading = false;
   double _playbackSpeed = 1.0;
   final List<double> _availableSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -59,10 +60,13 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> with WidgetsBindi
     try {
       setState(() => _isLoading = true);
 
-      // Simple version without audio context
       await _audioPlayer.setSource(UrlSource(widget.audioUrl));
       _duration = await _audioPlayer.getDuration() ?? Duration.zero;
-      await _audioPlayer.resume();
+
+      // FORCE PLAY - regardless of previous state
+      await _audioPlayer.seek(Duration.zero); // Reset to beginning
+      await _audioPlayer.resume(); // Force play
+
       setState(() => _isLoading = false);
 
     } catch (e) {
@@ -95,6 +99,19 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> with WidgetsBindi
         });
       }
     });
+
+    // Handle audio completion - CLOSE PLAYER WHEN FINISHED
+    _audioPlayer.onPlayerComplete.listen((_) {
+      if (mounted) {
+        // Auto-close the player after a brief delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && widget.onClose != null) {
+            widget.onClose!(); // This closes the player
+          }
+        });
+      }
+      print('Audio completed - closing player');
+    });
   }
 
   Future<void> _refreshAudioState() async {
@@ -116,6 +133,12 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> with WidgetsBindi
   Future<void> _playAudio() async {
     try {
       setState(() => _isLoading = true);
+
+      // If audio is finished or near end, reset to beginning
+      if (_position >= _duration - const Duration(seconds: 1) && _duration > Duration.zero) {
+        await _audioPlayer.seek(Duration.zero);
+      }
+
       await _audioPlayer.resume();
     } catch (e) {
       print('Error playing audio: $e');
@@ -171,6 +194,28 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> with WidgetsBindi
   String _getSpeedLabel() {
     if (_playbackSpeed == 1.0) return 'Normal';
     return '${_playbackSpeed}x';
+  }
+
+  void _showSpeedDialog(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Playback Speed'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _availableSpeeds.map((speed) => ListTile(
+            title: Text('${speed}x'),
+            trailing: _playbackSpeed == speed ? const Icon(Icons.check) : null,
+            onTap: () {
+              _changePlaybackSpeed(speed);
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
   }
 
   @override
@@ -265,25 +310,4 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> with WidgetsBindi
       ),
     );
   }
-
-  void _showSpeedDialog(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Playback Speed'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _availableSpeeds.map((speed) => ListTile(
-            title: Text('${speed}x'),
-            trailing: _playbackSpeed == speed ? Icon(Icons.check) : null,
-            onTap: () {
-              _changePlaybackSpeed(speed);
-              Navigator.pop(context);
-            },
-          )).toList(),
-        ),
-      ),
-    );
-  }}
+}
