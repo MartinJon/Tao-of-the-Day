@@ -17,7 +17,7 @@ class BetterAudioPlayer extends StatefulWidget {
   _BetterAudioPlayerState createState() => _BetterAudioPlayerState();
 }
 
-class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
+class _BetterAudioPlayerState extends State<BetterAudioPlayer> with WidgetsBindingObserver {
   final AudioPlayer _audioPlayer = AudioPlayer();
   PlayerState _playerState = PlayerState.stopped;
   Duration _duration = Duration.zero;
@@ -30,26 +30,43 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupAudioPlayer();
-    _initializeAudioAndPlay(); // Auto-play on init
+    _initializeAudioAndPlay();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    print('App lifecycle state: $state');
+
+    if (state == AppLifecycleState.paused) {
+      print('App going to background - audio should continue playing');
+    } else if (state == AppLifecycleState.resumed) {
+      _refreshAudioState();
+    } else if (state == AppLifecycleState.detached) {
+      _audioPlayer.stop();
+    }
   }
 
   Future<void> _initializeAudioAndPlay() async {
     try {
       setState(() => _isLoading = true);
 
-      // Configure for better audio handling
+      // Simple version without audio context
       await _audioPlayer.setSource(UrlSource(widget.audioUrl));
-
-      // Get duration first
       _duration = await _audioPlayer.getDuration() ?? Duration.zero;
-
-      // Auto-play
       await _audioPlayer.resume();
       setState(() => _isLoading = false);
 
     } catch (e) {
-      print('Error initializing and playing audio: $e');
+      print('Error initializing audio: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -78,6 +95,22 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
         });
       }
     });
+  }
+
+  Future<void> _refreshAudioState() async {
+    try {
+      final currentPosition = await _audioPlayer.getCurrentPosition();
+      final currentState = await _audioPlayer.state;
+
+      if (mounted) {
+        setState(() {
+          _position = currentPosition ?? Duration.zero;
+          _playerState = currentState;
+        });
+      }
+    } catch (e) {
+      print('Error refreshing audio state: $e');
+    }
   }
 
   Future<void> _playAudio() async {
@@ -172,8 +205,6 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
               ],
             ),
             const SizedBox(height: 12),
-
-            // Speed indicator
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -189,16 +220,12 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Progress bar
             Slider(
               value: _duration.inSeconds > 0 ? _position.inSeconds / _duration.inSeconds : 0,
               onChanged: _seekAudio,
               activeColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
             ),
             const SizedBox(height: 8),
-
-            // Time indicators
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -207,8 +234,6 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Controls
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -261,11 +286,4 @@ class _BetterAudioPlayerState extends State<BetterAudioPlayer> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-}
+  }}

@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
+
+
     <application
         android:label="tao_app_fixed"
         android:name="${applicationName}"
