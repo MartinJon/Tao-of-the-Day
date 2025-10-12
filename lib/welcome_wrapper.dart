@@ -30,7 +30,7 @@ class _WelcomeWrapperState extends State<WelcomeWrapper> {
         return AlertDialog(
           backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
           title: Text(
-            'Welcome to Tao of the Day',
+            'Welcome to\nTao of the Day',
             style: TextStyle(
               color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
               fontWeight: FontWeight.bold,
