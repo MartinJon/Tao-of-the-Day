@@ -4,11 +4,23 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+
+
 class StorageService {
   // Tao Journey methods
   static Future<void> resetTaoJourney() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('selectedNumbers');
+  }
+
+  static Future<bool> shouldShowWelcome() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('welcomeShown') ?? false;
+  }
+
+  static Future<void> setWelcomeShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('welcomeShown', true);
   }
 
   static Future<List<int>> loadSelectedNumbers() async {

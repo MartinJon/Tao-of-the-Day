@@ -13,9 +13,23 @@ import 'menu_dialogs.dart';
 import 'audio_player.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'welcome_wrapper.dart';
+import 'package:tao_app_fixed_clean/services/storage_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  print('🔍 Testing StorageService import...');
+  try {
+    final test = await StorageService.shouldShowWelcome();
+    print('✅ StorageService test passed: $test');
+  } catch (e) {
+    print('❌ StorageService test failed: $e');
+  }
+
+  // Check if we should show welcome dialog
+  final bool shouldShowWelcome = await StorageService.shouldShowWelcome();
 
   // Check if user has already selected a Tao for today
   final prefs = await SharedPreferences.getInstance();
@@ -25,15 +39,15 @@ void main() async {
 
   // If user has selected a Tao today, load the data first
   if (lastSelectedDate == currentDate && lastSelectedNumber > 0) {
-    await _loadTaoDataAndLaunchApp(lastSelectedNumber);
+    await _loadTaoDataAndLaunchApp(lastSelectedNumber, shouldShowWelcome);
   } else {
-    runApp(MyApp());
+    runApp(MyApp(shouldShowWelcome: shouldShowWelcome));
   }
 }
 
 
 // Helper function to load Tao data and launch app directly to detail page
-Future<void> _loadTaoDataAndLaunchApp(int taoNumber) async {
+Future<void> _loadTaoDataAndLaunchApp(int taoNumber, bool shouldShowWelcome) async {
   try {
     print('📦 Loading local Tao data for direct launch...');
 
@@ -69,22 +83,23 @@ Future<void> _loadTaoDataAndLaunchApp(int taoNumber) async {
 
     if (taoData.number != 0) {
       // Launch app directly to the detail page
-      runApp(MyApp(initialRoute: taoData));
+      runApp(MyApp(initialRoute: taoData, shouldShowWelcome: shouldShowWelcome));
     } else {
       // Fallback to normal launch
-      runApp(MyApp());
+      runApp(MyApp(shouldShowWelcome: shouldShowWelcome));
     }
   } catch (e) {
     print('❌ Error in _loadTaoDataAndLaunchApp: $e');
     // Fallback to normal launch on error
-    runApp(MyApp());
+    runApp(MyApp(shouldShowWelcome: shouldShowWelcome));
   }
 }
 
 class MyApp extends StatelessWidget {
   final TaoData? initialRoute;
+  final bool shouldShowWelcome;
 
-  const MyApp({super.key, this.initialRoute});
+  const MyApp({super.key, this.initialRoute, this.shouldShowWelcome = false});
 
   @override
   Widget build(BuildContext context) {
@@ -149,9 +164,15 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       themeMode: ThemeMode.system,
-      home: initialRoute != null
+      home: shouldShowWelcome
+          ? (initialRoute != null
           ? TaoDetailPage(taoData: initialRoute!)
-          : const NumberSelectorPage(),
+          : const NumberSelectorPage())
+          : WelcomeWrapper(
+        child: initialRoute != null
+            ? TaoDetailPage(taoData: initialRoute!)
+            : const NumberSelectorPage(),
+      ),
     );
   }
 
