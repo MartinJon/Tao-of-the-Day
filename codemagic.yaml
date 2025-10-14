@@ -24,24 +24,29 @@
 
   # iOS workflow
 
-  ios-release:
-    name: iOS Release
-    environment:
-      flutter: stable
-      xcode: latest
-      cocoapods: default
-    scripts:
-      - name: Build iOS Without Code Signing
-        script: |
-          flutter clean
-          flutter pub get
-          # Build without code signing - creates unsigned IPA
-          flutter build ipa --no-codesign
-          echo "IPA built successfully without code signing"
-          echo "You can manually sign this later or use different distribution"
-    artifacts:
-      - build/ios/ipa/*.ipa
-    publishing:
-      email:
-        recipients:
-          - mjongarcia@gmail.com
+  
+    ios-release:
+      name: iOS Release
+      environment:
+        flutter: stable
+        xcode: latest
+        cocoapods: default
+        groups:
+          - ios_signing
+      scripts:
+        - name: Build iOS
+          script: |
+            flutter clean
+            flutter pub get
+            flutter build ipa --release
+      artifacts:
+        - build/ios/ipa/*.ipa
+      publishing:
+        app_store_connect:
+          api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+          key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+          issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+          submit_to_testflight: true
+        email:
+          recipients:
+            - mjongarcia@gmail.com
