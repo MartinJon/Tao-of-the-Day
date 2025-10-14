@@ -3,7 +3,7 @@ description: "Tao of the Day App"
 
 publish_to: 'none'
 
-version: 1.0.0+48
+version: 1.0.0+49
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
