@@ -25,36 +25,39 @@
   # iOS workflow
 
 
-    ios-release:
-      name: iOS Release - Both Groups
-      environment:
-        flutter: stable
-        xcode: latest
-        cocoapods: default
-        groups:
-          - app_store_credentials  # For TestFlight upload
-          - ios_signing            # For manual code signing
-      scripts:
-        - name: Debug Environment
-          script: |
-            echo "=== CHECKING VARIABLES ==="
-            echo "API Vars - ISSUER_ID: ${APP_STORE_CONNECT_ISSUER_ID:-NOT_SET}"
-            echo "API Vars - KEY_ID: ${APP_STORE_CONNECT_KEY_IDENTIFIER:-NOT_SET}"
-            echo "Cert Vars - CM_CERTIFICATE length: ${#CM_CERTIFICATE}"
-            echo "=== BUILDING ==="
-        - name: Build iOS
-          script: |
-            flutter clean
-            flutter pub get
-            flutter build ipa --release
-      artifacts:
-        - build/ios/ipa/*.ipa
-      publishing:
-        app_store_connect:
-          api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-          key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-          issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-          submit_to_testflight: true
-        email:
-          recipients:
-            - mjongarcia@gmail.com
+  ios-release:
+    name: iOS Release - Manual Install
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - ios_signing
+        - app_store_credentials
+    scripts:
+      - name: Install Certificates Manually
+        script: |
+          echo "=== MANUALLY INSTALLING CERTIFICATES ==="
+          # Decode and install the certificate
+          echo "$CM_CERTIFICATE" | base64 --decode > certificate.p12
+          # Import to keychain
+          security import certificate.p12 -k ~/Library/Keychains/login.keychain -P "$CM_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          # List certificates to verify
+          security find-identity -p codesigning -v
+          echo "=== CERTIFICATES INSTALLED ==="
+      - name: Build iOS
+        script: |
+          flutter clean
+          flutter pub get
+          flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+      email:
+        recipients:
+          - mjongarcia@gmail.com
