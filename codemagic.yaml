@@ -29,42 +29,36 @@
       flutter: stable
       xcode: latest
       cocoapods: default
-    ios-release:
-      name: iOS Release (no underscore)
-      environment:
-        flutter: stable
-        xcode: latest
-        cocoapods: default
-      scripts:
-        - name: Setup Code Signing
-          script: |
-            echo "Debug - Checking environment variables:"
-            echo "ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID"
-            echo "KEY_ID: $APP_STORE_CONNECT_KEY_IDENTIFIER"
-            echo "PRIVATE_KEY length: ${#APP_STORE_CONNECT_PRIVATE_KEY}"
+    scripts:
+      - name: Setup Code Signing
+        script: |
+          echo "Debug - Checking environment variables:"
+          echo "ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID"
+          echo "KEY_ID: $APP_STORE_CONNECT_KEY_IDENTIFIER"
+          echo "PRIVATE_KEY length: ${#APP_STORE_CONNECT_PRIVATE_KEY}"
 
-            keychain initialize
-            app-store-connect fetch-signing-files "com.martinjon.taoapp" \
-              --type IOS_APP_STORE \
-              --create \
-              --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
-              --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-              --private-key="$APP_STORE_CONNECT_PRIVATE_KEY"
-            keychain add-certificates
-            xcode-project use-profiles
-        - name: Build iOS without underscore
-          script: |
-            flutter clean
-            flutter pub get
-            flutter build ipa --release
-      artifacts:
-        - build/ios/ipa/*.ipa
-      publishing:
-        app_store_connect:
-          api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-          key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-          issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-          submit_to_testflight: true
-        email:
-          recipients:
-            - mjongarcia@gmail.com
+          keychain initialize
+          app-store-connect fetch-signing-files "com.martinjon.taoapp" \
+            --type IOS_APP_STORE \
+            --create \
+            --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key="$APP_STORE_CONNECT_PRIVATE_KEY"
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Build iOS without underscore
+        script: |
+          flutter clean
+          flutter pub get
+          flutter build ipa --release
+    artifacts: # ← This should be at SAME level as "scripts" and "environment"
+      - build/ios/ipa/*.ipa
+    publishing: # ← This should be at SAME level as "scripts" and "environment"
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+      email:
+        recipients:
+          - mjongarcia@gmail.com
