@@ -25,20 +25,24 @@
   # iOS workflow
 
   ios-release:
-    name: iOS Release
+    name: iOS Release - Find Artifact
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Build Unsigned IPA
+      - name: Build and Locate IPA
         script: |
           flutter clean
           flutter pub get
-          flutter build ipa --no-codesign
-          echo "IPA built without signing - use alternative distribution"
+          flutter build ipa --export-method ad-hoc
+          echo "=== SEARCHING FOR IPA FILES ==="
+          find . -name "*.ipa" -type f 2>/dev/null || echo "No IPA files found"
+          echo "=== CHECKING BUILD DIRECTORIES ==="
+          ls -la build/ || echo "No build directory"
+          ls -la build/ios/ || echo "No ios build directory"
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/ipa/
     publishing:
       email:
         recipients:
