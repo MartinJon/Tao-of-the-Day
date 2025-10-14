@@ -23,23 +23,25 @@
 #           - mjongarcia@gmail.com
 
   # iOS workflow
-  
-    ios-release:
-      name: iOS Release
-      environment:
-        flutter: stable
-        xcode: latest
-        cocoapods: default
-      scripts:
-        - name: Build iOS with Debug
-          script: |
-            flutter clean
-            flutter pub get
-            echo "=== Starting build - this might trigger certificate setup ==="
-            flutter build ipa --release --verbose
-      artifacts:
-        - build/ios/ipa/
-      publishing:
-        email:
-          recipients:
-            - mjongarcia@gmail.com
+
+  ios-release:
+    name: iOS Release
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Build iOS Without Code Signing
+        script: |
+          flutter clean
+          flutter pub get
+          # Build without code signing - creates unsigned IPA
+          flutter build ipa --no-codesign
+          echo "IPA built successfully without code signing"
+          echo "You can manually sign this later or use different distribution"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - mjongarcia@gmail.com
