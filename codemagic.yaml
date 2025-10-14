@@ -30,13 +30,22 @@
       xcode: latest
       cocoapods: default
     scripts:
+      - name: Debug ALL Environment Variables
+        script: |  # ← NO DASH here!
+          echo "=== ALL ENVIRONMENT VARIABLES ==="
+          env
+          echo "=== END ==="
+      - name: Debug Environment Variables
+        script: |  # ← NO DASH here!
+          echo "=== DEBUGGING ENV VARS ==="
+          env | grep APP_STORE
+          echo "=== END DEBUG ==="
       - name: Setup Code Signing
-        script: |
+        script: |  # ← NO DASH here!
           echo "Debug - Checking environment variables:"
           echo "ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID"
           echo "KEY_ID: $APP_STORE_CONNECT_KEY_IDENTIFIER"
           echo "PRIVATE_KEY length: ${#APP_STORE_CONNECT_PRIVATE_KEY}"
-
           keychain initialize
           app-store-connect fetch-signing-files "com.martinjon.taoapp" \
             --type IOS_APP_STORE \
