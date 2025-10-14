@@ -29,13 +29,16 @@
       flutter: stable
       xcode: latest
       cocoapods: default
-      # NO groups section since you don't have groups
-      # The variables are available directly
     scripts:
       - name: Setup Code Signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "com.martinjon.taoapp" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "com.martinjon.taoapp" \
+            --type IOS_APP_STORE \
+            --create \
+            --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key="$APP_STORE_CONNECT_PRIVATE_KEY"
           keychain add-certificates
           xcode-project use-profiles
       - name: Build iOS without underscore
@@ -47,7 +50,7 @@
       - build/ios/ipa/*.ipa
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY  # ← These will work directly
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
