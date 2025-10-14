@@ -29,6 +29,15 @@
       flutter: stable
       xcode: latest
       cocoapods: default
+      vars:
+        APP_STORE_CONNECT_ISSUER_ID: "428e2e60-1127-4afb-b108-dc287b2eba09"
+        APP_STORE_CONNECT_KEY_IDENTIFIER: "85PW0QOVQ6YX"
+        APP_STORE_CONNECT_PRIVATE_KEY: |
+          -----BEGIN PRIVATE KEY-----
+          MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgv6pRQ8xa7avJnOmg
+          yeBDU1yO2KSn0ZnzTruxh2Ro/z6hRANCAATMjcnE0hnmEmuUFuDjHyZ3+toQ434+
+          lQM9UCh/3Lh48f1MfYOEEZywbM0WxkDXUB+sARRQ9k2snTbDX1kuHnuP
+          -----END PRIVATE KEY-----
     scripts:
       - name: Debug ALL Environment Variables
         script: |  # ← NO DASH here!
