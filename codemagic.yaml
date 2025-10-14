@@ -51,10 +51,10 @@
           echo "=== END DEBUG ==="
       - name: Debug - Check Variables
         script: |
-        echo "=== CHECKING VARS ==="
-        echo "ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID"
-        echo "KEY_ID: $APP_STORE_CONNECT_KEY_IDENTIFIER"
-        echo "PRIVATE_KEY length: ${#APP_STORE_CONNECT_PRIVATE_KEY}"
+         echo "=== CHECKING VARS ==="
+         echo "ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID"
+         echo "KEY_ID: $APP_STORE_CONNECT_KEY_IDENTIFIER"
+         echo "PRIVATE_KEY length: ${#APP_STORE_CONNECT_PRIVATE_KEY}"
       - name: Setup Code Signing
         script: |
           keychain initialize
