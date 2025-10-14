@@ -23,62 +23,23 @@
 #           - mjongarcia@gmail.com
 
   # iOS workflow
-  ios-release:
-    name: iOS Release (no underscore)
-    environment:
-      flutter: stable
-      xcode: latest
-      cocoapods: default
-      vars:
-        APP_STORE_CONNECT_ISSUER_ID: "428e2e60-1127-4afb-b108-dc287b2eba09"
-        APP_STORE_CONNECT_KEY_IDENTIFIER: "85PW0QOVQ6YX"
-        APP_STORE_CONNECT_PRIVATE_KEY: |
-          -----BEGIN PRIVATE KEY-----
-          MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgv6pRQ8xa7avJnOmg
-          yeBDU1yO2KSn0ZnzTruxh2Ro/z6hRANCAATMjcnE0hnmEmuUFuDjHyZ3+toQ434+
-          lQM9UCh/3Lh48f1MfYOEEZywbM0WxkDXUB+sARRQ9k2snTbDX1kuHnuP
-          -----END PRIVATE KEY-----
-    scripts:
-      - name: Debug ALL Environment Variables
-        script: |  # ← NO DASH here!
-          echo "=== ALL ENVIRONMENT VARIABLES ==="
-          env
-          echo "=== END ==="
-      - name: Debug Environment Variables
-        script: |  # ← NO DASH here!
-          echo "=== DEBUGGING ENV VARS ==="
-          env | grep APP_STORE
-          echo "=== END DEBUG ==="
-      - name: Debug - Check Variables
-        script: |
-         echo "=== CHECKING VARS ==="
-         echo "ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID"
-         echo "KEY_ID: $APP_STORE_CONNECT_KEY_IDENTIFIER"
-         echo "PRIVATE_KEY length: ${#APP_STORE_CONNECT_PRIVATE_KEY}"
-      - name: Setup Code Signing
-        script: |
-          keychain initialize
-          # Try without --create first
-          app-store-connect fetch-signing-files "com.martinjon.taoapp" \
-            --type IOS_APP_STORE \
-            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY"
-          keychain add-certificates
-          xcode-project use-profiles
-          - name: Build iOS
+  
+    ios-release:
+      name: iOS Release
+      environment:
+        flutter: stable
+        xcode: latest
+        cocoapods: default
+      scripts:
+        - name: Build iOS with Debug
           script: |
-          flutter clean
-          flutter pub get
-          flutter build ipa --release
-    artifacts: # ← This should be at SAME level as "scripts" and "environment"
-      - build/ios/ipa/*.ipa
-    publishing: # ← This should be at SAME level as "scripts" and "environment"
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
-      email:
-        recipients:
-          - mjongarcia@gmail.com
+            flutter clean
+            flutter pub get
+            echo "=== Starting build - this might trigger certificate setup ==="
+            flutter build ipa --release --verbose
+      artifacts:
+        - build/ios/ipa/
+      publishing:
+        email:
+          recipients:
+            - mjongarcia@gmail.com
