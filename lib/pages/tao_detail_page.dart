@@ -1,12 +1,11 @@
 // pages/tao_detail_page.dart
+// pages/tao_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:tao_app_fixed_clean/models/tao_data.dart';
 import 'package:tao_app_fixed_clean/menu_dialogs.dart';
-// import 'package:tao_app_fixed_clean/audio_player.dart';
-import '/better_audio_player.dart'; // ← Add this import'
+import 'package:tao_app_fixed_clean/widgets/universal_audio_player.dart';
 
 class TaoDetailPage extends StatefulWidget {
   final TaoData taoData;
@@ -19,75 +18,22 @@ class TaoDetailPage extends StatefulWidget {
 
 class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserver {
 
-  bool _isAudioPlaying = false;
-  bool _isPlayerVisible = false;
-  String? _currentAudioUrl;
-  String? _currentAudioLabel;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // REMOVE THESE LINES:
-    // _safeStopAudio();
-    // _audioPlayer.dispose();
     super.dispose();
   }
 
-  // This handles phone calls, app switching, etc.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     print('App lifecycle state changed: $state');
-
-    // DELETE these lines - BetterAudioPlayer handles background audio automatically
-    // if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-    //   _pauseAudio();
-    // } else if (state == AppLifecycleState.resumed) {
-    //   _refreshAudioState();
-    // }
   }
-
-
-
-
-  Future<void> _playAudio(BuildContext context, String audioUrl, String label) async {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Loading $label...'),
-          backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFFAB3300),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      // JUST show the BetterAudioPlayer - no audio operations here!
-      setState(() {
-        _currentAudioUrl = audioUrl;
-        _currentAudioLabel = label;
-        _isPlayerVisible = true;
-        _isAudioPlaying = true;
-      });
-
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-
-
 
   void _showNotesDialog(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -118,40 +64,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
           ],
         );
       },
-    );
-  }
-
-  Widget _buildAudioPlayer(BuildContext context, String audioUrl, String label, int index) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    if (audioUrl.isEmpty || audioUrl == 'NULL' || audioUrl.trim().isEmpty) {
-      return const SizedBox();
-    }
-
-    final isCurrentAudio = _currentAudioUrl == audioUrl && _isPlayerVisible;
-
-    return Card(
-      color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
-      child: ListTile(
-        leading: Icon(
-          Icons.audiotrack,
-          color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
-        ),
-        title: Text(
-          '$label $index',
-          style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
-        ),
-        subtitle: Row(
-          children: [
-            Text(isCurrentAudio ? 'Now Playing' : 'Tap to listen'),
-            const SizedBox(width: 8),
-            Icon(Icons.speed, size: 12),
-            const Text(' 2x available', style: TextStyle(fontSize: 10)),
-          ],
-        ),
-        trailing: isCurrentAudio ? const Icon(Icons.volume_up) : null,
-        onTap: () => _playAudio(context, audioUrl, '$label $index'),
-      ),
     );
   }
 
@@ -204,7 +116,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
 
     return WillPopScope(
       onWillPop: () async {
-        //await _safeStopAudio();
         final currentDate = DateFormat('yyyyMMdd').format(DateTime.now());
         final prefs = await SharedPreferences.getInstance();
         final selectedDate = prefs.getString('selectedNumberDate') ?? '';
@@ -297,9 +208,27 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
               ),
               const SizedBox(height: 10),
 
-              _buildAudioPlayer(context, widget.taoData.audio1, 'Discussion', 1),
-              _buildAudioPlayer(context, widget.taoData.audio2, 'Discussion', 2),
-              _buildAudioPlayer(context, widget.taoData.audio3, 'Discussion', 3),
+              // Universal Audio Players - Simple and self-contained
+              if (widget.taoData.audio1.isNotEmpty && widget.taoData.audio1 != 'NULL')
+                UniversalAudioPlayer(
+                  audioUrl: widget.taoData.audio1,
+                  title: 'Discussion 1 - ${widget.taoData.title}',
+                  showCloseButton: false,
+                ),
+
+              if (widget.taoData.audio2.isNotEmpty && widget.taoData.audio2 != 'NULL')
+                UniversalAudioPlayer(
+                  audioUrl: widget.taoData.audio2,
+                  title: 'Discussion 2 - ${widget.taoData.title}',
+                  showCloseButton: false,
+                ),
+
+              if (widget.taoData.audio3.isNotEmpty && widget.taoData.audio3 != 'NULL')
+                UniversalAudioPlayer(
+                  audioUrl: widget.taoData.audio3,
+                  title: 'Discussion 3 - ${widget.taoData.title}',
+                  showCloseButton: false,
+                ),
 
               if (widget.taoData.audio1.isEmpty && widget.taoData.audio2.isEmpty && widget.taoData.audio3.isEmpty)
                 Padding(
@@ -313,22 +242,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
                     textAlign: TextAlign.center,
                   ),
                 ),
-
-
-                if (_isPlayerVisible && _currentAudioUrl != null && _currentAudioLabel != null)
-                  BetterAudioPlayer(
-                    key: ValueKey(_currentAudioUrl),
-                    title: _currentAudioLabel!,
-                    audioUrl: _currentAudioUrl!,
-                    onClose: () async {
-                      setState(() {
-                        _isPlayerVisible = false;
-                        _currentAudioUrl = null;
-                        _currentAudioLabel = null;
-                        _isAudioPlaying = false;
-                      });
-                    },
-                  ),
 
               const SizedBox(height: 30),
 

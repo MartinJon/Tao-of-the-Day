@@ -1,21 +1,22 @@
 //cd "C:\Users\MartinJon\AndroidStudioProjects\tao_of_the_day_app"
-import 'dart:math';
+// lib/main.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'models/tao_data.dart';
 import 'pages/number_selector_page.dart';
 import 'pages/tao_detail_page.dart';
 import 'menu_dialogs.dart';
-import 'audio_player.dart';
-import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'welcome_wrapper.dart';
-import 'package:tao_app_fixed_clean/services/storage_service.dart';
-
+import 'services/storage_service.dart';
+import 'services/tao_service.dart';
+import 'widgets/universal_audio_player.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,7 +45,6 @@ void main() async {
     runApp(MyApp(shouldShowWelcome: shouldShowWelcome));
   }
 }
-
 
 // Helper function to load Tao data and launch app directly to detail page
 Future<void> _loadTaoDataAndLaunchApp(int taoNumber, bool shouldShowWelcome) async {
@@ -103,77 +103,79 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Tao of the Day',
-      theme: ThemeData(
-        primaryColor: const Color(0xFFAB3300),
-        scaffoldBackgroundColor: const Color(0xFFFFD26F),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF7E1A00),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        textTheme: TextTheme(
-          headlineSmall: TextStyle(
-            color: const Color(0xFF7E1A00),
-            fontWeight: FontWeight.bold,
-          ),
-          bodyMedium: TextStyle(
-            color: Colors.black,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF7E1A00),
+    return ChangeNotifierProvider(
+      create: (context) => AudioService(),
+      child: MaterialApp(
+        title: 'Tao of the Day',
+        theme: ThemeData(
+          primaryColor: const Color(0xFFAB3300),
+          scaffoldBackgroundColor: const Color(0xFFFFD26F),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF7E1A00),
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+            elevation: 0,
+          ),
+          textTheme: TextTheme(
+            headlineSmall: TextStyle(
+              color: const Color(0xFF7E1A00),
+              fontWeight: FontWeight.bold,
+            ),
+            bodyMedium: TextStyle(
+              color: Colors.black,
             ),
           ),
-        ),
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        primaryColor: const Color(0xFFD45C33),
-        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF5C1A00),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        textTheme: TextTheme(
-          headlineSmall: TextStyle(
-            color: const Color(0xFFD45C33),
-            fontWeight: FontWeight.bold,
-          ),
-          bodyMedium: TextStyle(
-            color: Colors.white70,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF5C1A00),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7E1A00),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
+          brightness: Brightness.light,
         ),
-        brightness: Brightness.dark,
-      ),
-      themeMode: ThemeMode.system,
-      home: shouldShowWelcome
-          ? (initialRoute != null
-          ? TaoDetailPage(taoData: initialRoute!)
-          : const NumberSelectorPage())
-          : WelcomeWrapper(
-        child: initialRoute != null
+        darkTheme: ThemeData(
+          primaryColor: const Color(0xFFD45C33),
+          scaffoldBackgroundColor: const Color(0xFF1A1A1A),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF5C1A00),
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
+          textTheme: TextTheme(
+            headlineSmall: TextStyle(
+              color: const Color(0xFFD45C33),
+              fontWeight: FontWeight.bold,
+            ),
+            bodyMedium: TextStyle(
+              color: Colors.white70,
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF5C1A00),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          brightness: Brightness.dark,
+        ),
+        themeMode: ThemeMode.system,
+        home: shouldShowWelcome
+            ? (initialRoute != null
             ? TaoDetailPage(taoData: initialRoute!)
-            : const NumberSelectorPage(),
+            : const NumberSelectorPage())
+            : WelcomeWrapper(
+          child: initialRoute != null
+              ? TaoDetailPage(taoData: initialRoute!)
+              : const NumberSelectorPage(),
+        ),
       ),
     );
   }
-
 }

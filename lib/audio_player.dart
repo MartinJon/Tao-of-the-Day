@@ -69,12 +69,11 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> with Widg
 
   Future<void> _configureAudioSession() async {
     try {
-      // Configure for background audio playback - SIMPLIFIED VERSION
-      await widget.audioPlayer.setAudioContext(const AudioContext(
+      // SIMPLIFIED version that will work
+      await widget.audioPlayer.setAudioContext(AudioContext(
         android: AudioContextAndroid(
           contentType: AndroidContentType.music,
-          // Removed problematic usage parameter
-          stayAwake: true, // Keep phone awake for audio
+          stayAwake: true,
         ),
         iOS: AudioContextIOS(
           category: AVAudioSessionCategory.playback,
@@ -83,9 +82,9 @@ class _PersistentAudioPlayerState extends State<PersistentAudioPlayer> with Widg
       print('✅ Audio session configured for background playback');
     } catch (e) {
       print('❌ Error configuring audio session: $e');
-      // Try a simpler configuration as fallback
+      // Even simpler fallback
       try {
-        await widget.audioPlayer.setAudioContext(const AudioContext(
+        await widget.audioPlayer.setAudioContext(AudioContext(
           android: AudioContextAndroid(
             contentType: AndroidContentType.music,
           ),
