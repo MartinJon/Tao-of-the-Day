@@ -1,50 +1,50 @@
 ﻿workflows:
-#
-#   android-release:
-#     name: Android Release (with underscore)
-#     environment:
-#       groups:
-#         - android_signing
-#       flutter: stable
-#     scripts:
-#       - name: Build Android with underscore
-#         script: |
-#           flutter clean
-#           flutter pub get
-#           echo $CM_KEYSTORE | base64 --decode > android/app/upload-keystore.jks
-#           ls -la android/app/upload-keystore.jks
-#           echo "Keystore file created successfully"
-#           flutter build appbundle --release
-#     artifacts:
-#       - build/app/outputs/bundle/release/app-release.aab
-#     publishing:
-#       email:
-#         recipients:
-#           - mjongarcia@gmail.com
+
+   android-release:
+     name: Android Release (with underscore)
+     environment:
+       groups:
+         - android_signing
+       flutter: stable
+     scripts:
+       - name: Build Android with underscore
+         script: |
+           flutter clean
+           flutter pub get
+           echo $CM_KEYSTORE | base64 --decode > android/app/upload-keystore.jks
+           ls -la android/app/upload-keystore.jks
+           echo "Keystore file created successfully"
+           flutter build appbundle --release
+     artifacts:
+       - build/app/outputs/bundle/release/app-release.aab
+     publishing:
+       email:
+         recipients:
+           - mjongarcia@gmail.com
 
   # iOS workflow
-
-
-  ios-release:
-    name: iOS Release - Auto Signing
-    environment:
-      flutter: stable
-      groups:
-        - app_store_credentials  # ONLY the API keys group
-    scripts:
-      - name: Build iOS
-        script: |
-          flutter clean
-          flutter pub get
-          flutter build ipa --release
-    artifacts:
-      - build/ios/ipa/*.ipa
-    publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
-      email:
-        recipients:
-          - mjongarcia@gmail.com
+#
+#
+#  ios-release:
+#    name: iOS Release - Auto Signing
+#    environment:
+#      flutter: stable
+#      groups:
+#        - app_store_credentials  # ONLY the API keys group
+#    scripts:
+#      - name: Build iOS
+#        script: |
+#          flutter clean
+#          flutter pub get
+#          flutter build ipa --release
+#    artifacts:
+#      - build/ios/ipa/*.ipa
+#    publishing:
+#      app_store_connect:
+#        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+#        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+#        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+#        submit_to_testflight: true
+#      email:
+#        recipients:
+#          - mjongarcia@gmail.com

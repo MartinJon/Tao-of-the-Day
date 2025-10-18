@@ -229,7 +229,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
                   title: 'Discussion 3 - ${widget.taoData.title}',
                   showCloseButton: false,
                 ),
-
               if (widget.taoData.audio1.isEmpty && widget.taoData.audio2.isEmpty && widget.taoData.audio3.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(16.0),

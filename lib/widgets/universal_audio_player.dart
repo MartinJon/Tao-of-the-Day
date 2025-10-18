@@ -103,7 +103,7 @@ class AudioService with ChangeNotifier {
       pauseAudio();
     }
   }
-// Add this method to your AudioService class in universal_audio_player.dart
+
   Future<void> refreshAudioState() async {
     try {
       final currentState = await _audioPlayer.state;
@@ -116,6 +116,8 @@ class AudioService with ChangeNotifier {
       print('Error refreshing audio state: $e');
     }
   }
+
+
   void onAppResumed() {
     // Refresh the state to sync with actual audio player
     refreshAudioState();
@@ -277,7 +279,7 @@ class UniversalAudioPlayer extends StatelessWidget {
                   _buildSeekButton(Icons.replay_10, () => audioService.seek(audioService.position - const Duration(seconds: 10)), isDarkMode),
                   _buildPlayPauseButton(context, audioService, isPlaying, isDarkMode),
                   _buildSeekButton(Icons.forward_10, () => audioService.seek(audioService.position + const Duration(seconds: 10)), isDarkMode),
-
+                  _buildStopButton(context, audioService, isDarkMode),
                 ],
               ),
             ],
@@ -286,6 +288,8 @@ class UniversalAudioPlayer extends StatelessWidget {
       ),
     );
   }
+
+
 
   Widget _buildSpeedIndicator(BuildContext context, AudioService audioService, bool isDarkMode) {
     return Container(
@@ -346,7 +350,7 @@ class UniversalAudioPlayer extends StatelessWidget {
       icon: const Icon(Icons.stop, size: 28),
       onPressed: () {
         audioService.stopAudio();
-        onClose?.call();
+        onClose?.call();  // ← Change onClosePressed to onClose?.call()
       },
       color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
       tooltip: 'Stop',
