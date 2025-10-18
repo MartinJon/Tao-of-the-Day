@@ -26,25 +26,12 @@
 
 
   ios-release:
-    name: iOS Release - Manual Install
+    name: iOS Release - Auto Signing
     environment:
       flutter: stable
-      xcode: latest
-      cocoapods: default
       groups:
-        - ios_signing
-        - app_store_credentials
+        - app_store_credentials  # ONLY the API keys group
     scripts:
-      - name: Install Certificates Manually
-        script: |
-          echo "=== MANUALLY INSTALLING CERTIFICATES ==="
-          # Decode and install the certificate
-          echo "$CM_CERTIFICATE" | base64 --decode > certificate.p12
-          # Import to keychain
-          security import certificate.p12 -k ~/Library/Keychains/login.keychain -P "$CM_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          # List certificates to verify
-          security find-identity -p codesigning -v
-          echo "=== CERTIFICATES INSTALLED ==="
       - name: Build iOS
         script: |
           flutter clean
