@@ -37,7 +37,7 @@
           flutter pub get
           flutter build ipa --release
     code_signing :
-      ios_automatic: true**
+      type: automatic**
     artifacts:
       - build/ios/ipa/*.ipa
     publishing:
