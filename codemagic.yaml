@@ -29,23 +29,15 @@
     name: iOS Release - Auto Signing
     environment:
       flutter: stable
-      # REMOVED the app_store_credentials group
     scripts:
       - name: Build iOS
         script: |
           flutter clean
           flutter pub get
           flutter build ipa --release
-    code_signing :
-      type: automatic**
     artifacts:
       - build/ios/ipa/*.ipa
     publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
       email:
         recipients:
           - mjongarcia@gmail.com
