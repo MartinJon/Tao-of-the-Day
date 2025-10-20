@@ -29,14 +29,15 @@
     name: iOS Release - Auto Signing
     environment:
       flutter: stable
-      groups:
-        - app_store_credentials  # ONLY the API keys group
+      # REMOVED the app_store_credentials group
     scripts:
       - name: Build iOS
         script: |
           flutter clean
           flutter pub get
           flutter build ipa --release
+    code_signing :
+      ios_automatic: true**
     artifacts:
       - build/ios/ipa/*.ipa
     publishing:
