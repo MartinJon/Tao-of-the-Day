@@ -7,6 +7,8 @@ class TaoData {
   final String audio1;
   final String audio2;
   final String audio3;
+  final String prompt1;
+  final String prompt2;
 
   TaoData({
     required this.number,
@@ -16,6 +18,8 @@ class TaoData {
     required this.audio1,
     required this.audio2,
     required this.audio3,
+    required this.prompt1,
+    required this.prompt2,
   });
 
   factory TaoData.fromJson(Map<String, dynamic> json) {
@@ -36,6 +40,8 @@ class TaoData {
       audio1: json['1']?.toString() ?? '',
       audio2: json['2']?.toString() ?? '',
       audio3: json['3']?.toString() ?? '',
+      prompt1: json['Prompt 1']?.toString() ?? '',
+      prompt2: json['Prompt 2']?.toString() ?? '',
     );
   }
 
@@ -79,6 +85,11 @@ class TaoData {
       audio1: '',
       audio2: '',
       audio3: '',
+      prompt1: '',
+      prompt2: '',
     );
   }
+
+  // Helper method to check if there are any prompts
+  bool get hasPrompts => prompt1.isNotEmpty || prompt2.isNotEmpty;
 }

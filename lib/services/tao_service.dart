@@ -56,6 +56,8 @@ class TaoService {
         audio1: '',
         audio2: '',
         audio3: '',
+        prompt1: '', // Add empty prompts for fallback
+        prompt2: '', // Add empty prompts for fallback
       ));
     }
 

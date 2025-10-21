@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tao_app_fixed_clean/models/tao_data.dart';
 import 'package:tao_app_fixed_clean/menu_dialogs.dart';
 import 'package:tao_app_fixed_clean/widgets/universal_audio_player.dart';
+import 'package:tao_app_fixed_clean/widgets/prompts_section.dart';
 
 class TaoDetailPage extends StatefulWidget {
   final TaoData taoData;
@@ -67,6 +68,7 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
     );
   }
 
+
   Widget _buildAudioDisclaimer() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00);
@@ -109,6 +111,7 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -197,8 +200,10 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
               ),
               const SizedBox(height: 30),
 
+
               _buildAudioDisclaimer(),
               const SizedBox(height: 16),
+
 
               Text(
                 'Discussions:',
@@ -241,6 +246,8 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
                     textAlign: TextAlign.center,
                   ),
                 ),
+
+              PromptsSection(taoData: widget.taoData),
 
               const SizedBox(height: 30),
 
