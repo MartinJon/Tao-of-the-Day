@@ -21,85 +21,57 @@ import 'widgets/universal_audio_player.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  print('🔍 Testing StorageService import...');
-  try {
-    final test = await StorageService.shouldShowWelcome();
-    print('✅ StorageService test passed: $test');
-  } catch (e) {
-    print('❌ StorageService test failed: $e');
+  final bool hasSeenWelcome = await StorageService.shouldShowWelcome();
+
+  // If first time user, show welcome flow
+  if (!hasSeenWelcome) {
+    runApp(const MyApp(showWelcome: true));
+    return;
   }
 
-  // Check if we should show welcome dialog
-  final bool shouldShowWelcome = await StorageService.shouldShowWelcome();
-
-  // Check if user has already selected a Tao for today
+  // Returning user - check if they have today's Tao selected
   final prefs = await SharedPreferences.getInstance();
   final currentDate = DateFormat('yyyyMMdd').format(DateTime.now());
   final lastSelectedDate = prefs.getString('selectedNumberDate') ?? '';
   final lastSelectedNumber = prefs.getInt('selectedNumber') ?? 0;
 
-  // If user has selected a Tao today, load the data first
+  // If user has today's Tao selected, go directly to it
   if (lastSelectedDate == currentDate && lastSelectedNumber > 0) {
-    await _loadTaoDataAndLaunchApp(lastSelectedNumber, shouldShowWelcome);
+    await _launchToTaoDetail(lastSelectedNumber);
   } else {
-    runApp(MyApp(shouldShowWelcome: shouldShowWelcome));
+    // Go to selector page
+    runApp(const MyApp(showWelcome: false));
   }
 }
 
-// Helper function to load Tao data and launch app directly to detail page
-Future<void> _loadTaoDataAndLaunchApp(int taoNumber, bool shouldShowWelcome) async {
+// Simplified helper to launch directly to Tao detail
+Future<void> _launchToTaoDetail(int taoNumber) async {
   try {
-    print('📦 Loading local Tao data for direct launch...');
-
-    // Load from local JSON
-    final String data = await rootBundle.loadString('lib/data/tao_data.json');
-    final List<dynamic> jsonList = jsonDecode(data);
-
-    final List<TaoData> taoDataList = [];
-
-    for (final json in jsonList) {
-      try {
-        final taoData = TaoData.fromJson(json);
-        if (taoData.number > 0) {
-          taoDataList.add(taoData);
-        }
-      } catch (e) {
-        print('❌ Error parsing Tao entry: $e');
-        // Continue with other entries instead of failing completely
-      }
-    }
-
-    if (taoDataList.isEmpty) {
-      throw Exception('No valid Tao data found');
-    }
-
-    taoDataList.sort((a, b) => a.number.compareTo(b.number));
-
-    // Find the Tao data for the selected number
+    final taoDataList = await TaoService.loadLocalTaoData();
     final taoData = taoDataList.firstWhere(
           (data) => data.number == taoNumber,
       orElse: () => TaoData.empty(),
     );
 
     if (taoData.number != 0) {
-      // Launch app directly to the detail page
-      runApp(MyApp(initialRoute: taoData, shouldShowWelcome: shouldShowWelcome));
+      runApp(MyApp(showWelcome: false, initialTao: taoData));
     } else {
-      // Fallback to normal launch
-      runApp(MyApp(shouldShowWelcome: shouldShowWelcome));
+      runApp(const MyApp(showWelcome: false));
     }
   } catch (e) {
-    print('❌ Error in _loadTaoDataAndLaunchApp: $e');
-    // Fallback to normal launch on error
-    runApp(MyApp(shouldShowWelcome: shouldShowWelcome));
+    print('❌ Error launching to Tao detail: $e');
+    runApp(const MyApp(showWelcome: false));
   }
 }
-
 class MyApp extends StatelessWidget {
-  final TaoData? initialRoute;
-  final bool shouldShowWelcome;
+  final bool showWelcome;
+  final TaoData? initialTao;
 
-  const MyApp({super.key, this.initialRoute, this.shouldShowWelcome = false});
+  const MyApp({
+    super.key,
+    required this.showWelcome,
+    this.initialTao
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -166,15 +138,15 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         themeMode: ThemeMode.system,
-        home: shouldShowWelcome
-            ? (initialRoute != null
-            ? TaoDetailPage(taoData: initialRoute!)
-            : const NumberSelectorPage())
-            : WelcomeWrapper(
-          child: initialRoute != null
-              ? TaoDetailPage(taoData: initialRoute!)
+        home: showWelcome
+            ? WelcomeWrapper(
+          child: initialTao != null
+              ? TaoDetailPage(taoData: initialTao!)
               : const NumberSelectorPage(),
-        ),
+        )
+            : (initialTao != null
+            ? TaoDetailPage(taoData: initialTao!)
+            : const NumberSelectorPage()),
       ),
     );
   }
