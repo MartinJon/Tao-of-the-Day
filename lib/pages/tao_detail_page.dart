@@ -68,7 +68,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
     );
   }
 
-
   Widget _buildAudioDisclaimer() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDarkMode ? const Color(0xFFFFD26F) : const Color(0xFF7E1A00);
@@ -111,18 +110,14 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
       ),
     );
   }
-
-
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return WillPopScope(
       onWillPop: () async {
         final currentDate = DateFormat('yyyyMMdd').format(DateTime.now());
         final prefs = await SharedPreferences.getInstance();
         final selectedDate = prefs.getString('selectedNumberDate') ?? '';
-
         if (selectedDate == currentDate) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -200,11 +195,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
               ),
               const SizedBox(height: 30),
 
-
-              _buildAudioDisclaimer(),
-              const SizedBox(height: 16),
-
-
               Text(
                 'Discussions:',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -212,6 +202,9 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
                 ),
               ),
               const SizedBox(height: 10),
+
+              _buildAudioDisclaimer(),
+              const SizedBox(height: 16),
 
               // Universal Audio Players - Simple and self-contained
               if (widget.taoData.audio1.isNotEmpty && widget.taoData.audio1 != 'NULL')

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MenuDialogs {
   static const String appVersion = '1.0.0';
@@ -75,7 +76,7 @@ class MenuDialogs {
   // Menu selection handler
   static void handleMenuSelection(BuildContext context, String value) {
     switch (value) {
-      case 'about':
+        case 'about':
         showAboutDialog(context);
         break;
       case 'concept':
@@ -721,7 +722,7 @@ class MenuDialogs {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         '✅ Data We NEVER Collect:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
@@ -877,4 +878,5 @@ class MenuDialogs {
       //throw Exception('Could not launch $url');
     //}
   //}
+
 }
