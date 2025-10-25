@@ -10,7 +10,7 @@
 
 
     <application
-        android:label="tao_app_fixed"
+        android:label="Tao of the Day"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config">
