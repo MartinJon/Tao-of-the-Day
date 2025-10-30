@@ -196,7 +196,7 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
               const SizedBox(height: 30),
 
               Text(
-                'Discussions:',
+                'Discussions',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
                 ),
