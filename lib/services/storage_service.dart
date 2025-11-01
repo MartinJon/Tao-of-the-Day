@@ -52,51 +52,32 @@ class StorageService {
     await prefs.setBool('filterUsedNumbers', value);
   }
 
-  // Network time method
-  static Future<DateTime> getNetworkTime() async {
-    try {
-      final response = await http.get(Uri.parse('http://worldtimeapi.org/api/ip'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final datetimeString = data['datetime'];
-        return DateTime.parse(datetimeString);
-      }
-    } catch (e) {
-      print('❌ Network time failed: $e');
-    }
-
-    // Fallback to device time if network fails
-    print('⚠️ Using device time as fallback');
-    return DateTime.now();
-  }
-
-  // Updated daily selection method with network time check
   static Future<bool> canSelectNewNumber() async {
     final prefs = await SharedPreferences.getInstance();
     final lastSelectedDate = prefs.getString('selectedNumberDate') ?? '';
 
-    // Use network time instead of device time
-    final currentNetworkDate = DateFormat('yyyyMMdd').format(await getNetworkTime());
+    // Simple device time check
+    final currentDeviceDate = DateFormat('yyyyMMdd').format(DateTime.now());
 
-    print('🔍 DATE CHECK: Last selected: $lastSelectedDate, Current network: $currentNetworkDate');
+    print('📅 DATE CHECK: Last selected: $lastSelectedDate, Current device: $currentDeviceDate');
 
-    return lastSelectedDate != currentNetworkDate;
+    return lastSelectedDate != currentDeviceDate;
   }
 
   static Future<void> saveDailySelection(int number) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Use network time for consistency
-    final currentNetworkDate = DateFormat('yyyyMMdd').format(await getNetworkTime());
+    // Use simple device time
+    final currentDeviceDate = DateFormat('yyyyMMdd').format(DateTime.now());
 
     await prefs.setInt('selectedNumber', number);
-    await prefs.setString('selectedNumberDate', currentNetworkDate);
+    await prefs.setString('selectedNumberDate', currentDeviceDate);
 
-    print('💾 Saved Tao $number for date: $currentNetworkDate');
+    print('💾 Saved Tao $number for date: $currentDeviceDate');
   }
 
   static Future<int> getLastSelectedNumber() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt('selectedNumber') ?? 0;
   }
-}
+ }
