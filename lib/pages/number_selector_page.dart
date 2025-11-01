@@ -6,6 +6,8 @@ import '../menu_dialogs.dart';
 import '../pages/tao_detail_page.dart';
 import '../services/tao_service.dart';
 import '../services/storage_service.dart';
+import '../services/subscription_service.dart';
+import '../pages/subscription_page.dart';
 import 'dart:math';
 
 class NumberSelectorPage extends StatefulWidget {
@@ -13,6 +15,12 @@ class NumberSelectorPage extends StatefulWidget {
 
   @override
   _NumberSelectorPageState createState() => _NumberSelectorPageState();
+}
+
+Future<bool> _checkSubscription() async {
+  final subscriptionService = SubscriptionService();
+  await subscriptionService.initialize();
+  return await subscriptionService.hasActiveSubscription();
 }
 
 class _NumberSelectorPageState extends State<NumberSelectorPage> {
@@ -229,7 +237,13 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
   }
 
   void _navigateToTaoDetail(int number) async {
+    final hasSubscription = await _checkSubscription();
     final canSelectNew = await _canSelectNewNumber();
+
+    if (!hasSubscription && !canSelectNew) {
+      _showSubscriptionPrompt();
+      return;
+    }
 
     // DAILY LIMIT CHECK
     if (!canSelectNew) {
@@ -264,6 +278,55 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
     print('🔍 DAILY LIMIT DEBUG: canSelectNew = $canSelectNew');
     print('🔍 DAILY LIMIT DEBUG: number = $number');
+  }
+
+  void _showSubscriptionPrompt() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        return AlertDialog(
+          title: Text(
+            'Continue Your Tao Journey',
+            style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.auto_awesome,
+                size: 50,
+                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'You\'ve already explored your Tao for today. '
+                    'Subscribe to Tao of the Day Premium to continue your journey '
+                    'and explore new chapters every day.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Maybe Later'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SubscriptionPage()),
+                );
+              },
+              child: const Text('Subscribe'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showAlreadySelectedDialog() {

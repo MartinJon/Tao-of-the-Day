@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/subscription_service.dart';
+import 'pages/subscription_page.dart';
+import '../services/trial_service.dart';
 
 class MenuDialogs {
   static const String appVersion = '1.0.0';
@@ -24,6 +27,13 @@ class MenuDialogs {
           child: ListTile(
             leading: Icon(Icons.lightbulb),
             title: Text('Tao of the Day Concept'),
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'subscribe',
+          child: ListTile(
+            leading: Icon(Icons.star),
+            title: Text('Go Premium'),
           ),
         ),
         const PopupMenuItem<String>(
@@ -81,6 +91,12 @@ class MenuDialogs {
         break;
       case 'concept':
         showConceptDialog(context);
+        break;
+      case 'subscribe':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SubscriptionPage()),
+        );
         break;
       case 'noomvibe':
         showNoomVibeDialog(context);
@@ -177,6 +193,11 @@ class MenuDialogs {
                     color: (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
+                  child: GestureDetector(  // ← Wrap with GestureDetector
+                    onTap: () {
+                      Navigator.pop(context); // Close about dialog
+                      _showDeveloperMenu(context); // Show developer menu
+                    },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -195,6 +216,7 @@ class MenuDialogs {
                       ),
                     ],
                   ),
+                ),
                 ),
               ],
             ),
@@ -878,5 +900,86 @@ class MenuDialogs {
       //throw Exception('Could not launch $url');
     //}
   //}
+// Add these methods to your MenuDialogs class:
+
+  static void _showDeveloperMenu(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Developer Options'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.delete, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+              title: Text('Reset Trial'),
+              onTap: () {
+                TrialService.resetTrial();
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Trial reset'))
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.visibility, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+              title: Text('Check Subscription Status'),
+              onTap: () {
+                Navigator.pop(context);
+                _checkSubscriptionStatus(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.shopping_cart, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+              title: Text('Force Subscription Page'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SubscriptionPage()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static void _checkSubscriptionStatus(BuildContext context) async {
+    final subscriptionService = SubscriptionService();
+    await subscriptionService.initialize();
+    final hasAccess = await subscriptionService.hasActiveSubscription();
+    final isSubscribed = await subscriptionService.hasActiveSubscription();
+    final inTrial = await TrialService.isTrialActive();
+    final daysRemaining = await TrialService.getDaysRemaining();
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Subscription Status', style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Has Access: $hasAccess'),
+            Text('Is Subscribed: $isSubscribed'),
+            Text('In Trial: $inTrial'),
+            Text('Days Remaining: $daysRemaining'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 
 }

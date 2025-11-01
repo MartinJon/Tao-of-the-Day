@@ -17,13 +17,39 @@ import 'welcome_wrapper.dart';
 import 'services/storage_service.dart';
 import 'services/tao_service.dart';
 import 'widgets/universal_audio_player.dart';
+import 'services/subscription_service.dart';
+import 'services/shared_prefrences.dart';
+import 'pages/subscription_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 1. Initialize subscription service first
+  final subscriptionService = SubscriptionService();
+  await subscriptionService.initialize();
+
+  // 2. Start trial if this is user's first time
+  await TrialService.startTrialIfNeeded();
+
+  // 3. CHECK SUBSCRIPTION ACCESS - THIS IS THE GATEKEEPER
+  final bool canAccessApp = await _checkAppAccess();
+
+  if (!canAccessApp) {
+    // USER CANNOT ACCESS APP - show subscription page immediately
+    print('🚫 User cannot access app - showing subscription page');
+    runApp(const MyApp(
+      showWelcome: false, // Required parameter
+      showSubscriptionRequired: true,
+    ));
+    return;
+  }
+
+  // USER CAN ACCESS APP - continue with normal app flow
+  print('✅ User can access app - showing normal content');
+
+  // Existing welcome flow for users with access
   final bool hasSeenWelcome = await StorageService.shouldShowWelcome();
 
-  // If first time user, show welcome flow
   if (!hasSeenWelcome) {
     runApp(const MyApp(showWelcome: true));
     return;
@@ -35,13 +61,34 @@ void main() async {
   final lastSelectedDate = prefs.getString('selectedNumberDate') ?? '';
   final lastSelectedNumber = prefs.getInt('selectedNumber') ?? 0;
 
-  // If user has today's Tao selected, go directly to it
   if (lastSelectedDate == currentDate && lastSelectedNumber > 0) {
     await _launchToTaoDetail(lastSelectedNumber);
   } else {
-    // Go to selector page
     runApp(const MyApp(showWelcome: false));
   }
+}
+
+// NEW FUNCTION: The gatekeeper that decides if user can use the app
+Future<bool> _checkAppAccess() async {
+  final subscriptionService = SubscriptionService();
+
+  // Check if user has active subscription (paid user)
+  final hasActiveSubscription = await subscriptionService.hasActiveSubscription();
+  if (hasActiveSubscription) {
+    print('💰 User has active subscription');
+    return true;
+  }
+
+  // Check if user is in trial period (new user)
+  final trialActive = await TrialService.isTrialActive();
+  if (trialActive) {
+    print('🆓 User is in trial period');
+    return true;
+  }
+
+  // User has no subscription and trial expired - NO ACCESS
+  print('❌ User has no subscription and trial expired');
+  return false;
 }
 
 // Simplified helper to launch directly to Tao detail
@@ -63,14 +110,17 @@ Future<void> _launchToTaoDetail(int taoNumber) async {
     runApp(const MyApp(showWelcome: false));
   }
 }
+
 class MyApp extends StatelessWidget {
   final bool showWelcome;
   final TaoData? initialTao;
+  final bool showSubscriptionRequired;
 
   const MyApp({
     super.key,
     required this.showWelcome,
-    this.initialTao
+    this.initialTao,
+    this.showSubscriptionRequired = false,
   });
 
   @override
@@ -138,16 +188,26 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         themeMode: ThemeMode.system,
-        home: showWelcome
-            ? WelcomeWrapper(
-          child: initialTao != null
-              ? TaoDetailPage(taoData: initialTao!)
-              : const NumberSelectorPage(),
-        )
-            : (initialTao != null
-            ? TaoDetailPage(taoData: initialTao!)
-            : const NumberSelectorPage()),
+        home: _buildHome(),
       ),
     );
+  }
+
+  Widget _buildHome() {
+    if (showSubscriptionRequired) {
+      return const SubscriptionPage();
+    }
+
+    if (showWelcome) {
+      return WelcomeWrapper(
+        child: initialTao != null
+            ? TaoDetailPage(taoData: initialTao!)
+            : const NumberSelectorPage(),
+      );
+    }
+
+    return initialTao != null
+        ? TaoDetailPage(taoData: initialTao!)
+        : const NumberSelectorPage();
   }
 }
