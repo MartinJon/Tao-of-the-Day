@@ -145,6 +145,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   }
 
   // Build trial status section
+  // Build trial status section WITH subscribe option
   Widget _buildTrialStatusSection() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -153,44 +154,97 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       builder: (context, snapshot) {
         final daysRemaining = snapshot.data ?? 0;
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.green),
-          ),
-          child: Column(
-            children: [
-              Icon(Icons.celebration, size: 40, color: Colors.green),
-              SizedBox(height: 10),
-              Text(
-                'You\'re in your Free Trial!',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
+        return Column(
+          children: [
+            // Trial status info
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green),
               ),
-              SizedBox(height: 8),
-              Text(
-                daysRemaining > 1
-                    ? '$daysRemaining days remaining in your trial'
-                    : 'Last day of your free trial - enjoy!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : Colors.black87,
-                ),
+              child: Column(
+                children: [
+                  Icon(Icons.celebration, size: 40, color: Colors.green),
+                  SizedBox(height: 10),
+                  Text(
+                    'You\'re in your Free Trial!',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    daysRemaining > 1
+                        ? '$daysRemaining days remaining in your trial'
+                        : 'Last day of your free trial',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // Go back to main app
-                },
-                child: Text('Continue Tao Practice'),
+            ),
+            SizedBox(height: 20),
+
+            // Subscribe now option
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
               ),
-            ],
-          ),
+              child: Column(
+                children: [
+                  Text(
+                    'Upgrade to Premium Now',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Subscribe today and your payment will start after the trial ends',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleSubscribe,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                      ),
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                        'SUBSCRIBE FOR \$0.98/MONTH',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 10),
+
+            // Keep restore purchases option
+            TextButton(
+              onPressed: _isLoading ? null : _handleRestore,
+              child: const Text('Restore Purchases'),
+            ),
+          ],
         );
       },
     );
