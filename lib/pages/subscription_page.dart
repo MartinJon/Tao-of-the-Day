@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/subscription_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/trial_service.dart';
 
 class SubscriptionPage extends StatefulWidget {
@@ -18,6 +19,13 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   void initState() {
     super.initState();
     _loadTrialInfo();
+  }
+
+  Future<bool> _isEligibleForTrial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final trialStartString = prefs.getString('trial_start_date');
+    // If no trial has ever been started, user is eligible
+    return trialStartString == null;
   }
 
   void _loadTrialInfo() async {
@@ -55,8 +63,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       // Check if user now has access
       final hasAccess = await _subscriptionService.hasActiveSubscription();
       if (hasAccess && mounted) {
-        Navigator.pop(context
-        );
+        Navigator.pop(context);
       } else if (mounted) {
         _showErrorDialog('No active subscription found.');
       }
@@ -84,6 +91,149 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // Helper method to check subscription status
+  Future<bool> _checkIfSubscribed() async {
+    final subscriptionService = SubscriptionService();
+    await subscriptionService.initialize();
+    return await subscriptionService.hasActiveSubscription();
+  }
+
+  // Build subscribed user status
+  Widget _buildSubscribedStatus() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.star, size: 40, color: Colors.blue),
+          SizedBox(height: 10),
+          Text(
+            'You\'re a Premium Member!',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Thank you for supporting Tao of the Day',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+            ),
+          ),
+          SizedBox(height: 10),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Go back to main app
+            },
+            child: Text('Return to Tao Practice'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build trial status section
+  Widget _buildTrialStatusSection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return FutureBuilder<int>(
+      future: TrialService.getDaysRemaining(),
+      builder: (context, snapshot) {
+        final daysRemaining = snapshot.data ?? 0;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.celebration, size: 40, color: Colors.green),
+              SizedBox(height: 10),
+              Text(
+                'You\'re in your Free Trial!',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                daysRemaining > 1
+                    ? '$daysRemaining days remaining in your trial'
+                    : 'Last day of your free trial - enjoy!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black87,
+                ),
+              ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context); // Go back to main app
+                },
+                child: Text('Continue Tao Practice'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Build subscribe section (button and restore purchases)
+  Widget _buildSubscribeSection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return FutureBuilder<bool>(
+      future: TrialService.hasTrialEverStarted(),
+      builder: (context, snapshot) {
+        final trialEverStarted = snapshot.data ?? false;
+        final buttonText = trialEverStarted
+            ? 'SUBSCRIBE FOR \$0.98/MONTH'
+            : 'START 3-DAY FREE TRIAL';
+
+        return Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleSubscribe,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                  buttonText,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: _isLoading ? null : _handleRestore,
+              child: const Text('Restore Purchases'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -165,31 +315,43 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               ),
             ),
 
-            const Spacer(),
+            const SizedBox(height: 20),
 
-            // Subscribe Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _handleSubscribe,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                  'START 3-DAY FREE TRIAL',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
+            // Check subscription status and show appropriate content
+            FutureBuilder<bool>(
+              future: _checkIfSubscribed(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircularProgressIndicator();
+                }
 
-            // Restore Purchases
-            TextButton(
-              onPressed: _isLoading ? null : _handleRestore,
-              child: const Text('Restore Purchases'),
+                final isSubscribed = snapshot.data ?? false;
+
+                if (isSubscribed) {
+                  // User is already subscribed
+                  return _buildSubscribedStatus();
+                } else {
+                  // User is not subscribed - check trial status
+                  return FutureBuilder<bool>(
+                    future: TrialService.isTrialActive(),
+                    builder: (context, trialSnapshot) {
+                      if (trialSnapshot.connectionState == ConnectionState.waiting) {
+                        return CircularProgressIndicator();
+                      }
+
+                      final isTrialActive = trialSnapshot.data ?? false;
+
+                      if (isTrialActive) {
+                        // User is in trial - show trial status
+                        return _buildTrialStatusSection();
+                      } else {
+                        // Trial expired or never started - show subscribe options
+                        return _buildSubscribeSection();
+                      }
+                    },
+                  );
+                }
+              },
             ),
 
             const SizedBox(height: 20),

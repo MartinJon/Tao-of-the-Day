@@ -8,6 +8,8 @@ class SubscriptionService {
   factory SubscriptionService() => _instance;
   SubscriptionService._internal();
 
+
+
   static const String _subscriptionId = 'tao_subscription_monthly';
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
 

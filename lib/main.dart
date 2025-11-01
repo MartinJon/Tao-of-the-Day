@@ -71,6 +71,7 @@ void main() async {
 // NEW FUNCTION: The gatekeeper that decides if user can use the app
 Future<bool> _checkAppAccess() async {
   final subscriptionService = SubscriptionService();
+  await subscriptionService.initialize();
 
   // Check if user has active subscription (paid user)
   final hasActiveSubscription = await subscriptionService.hasActiveSubscription();

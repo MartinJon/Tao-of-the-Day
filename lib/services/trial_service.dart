@@ -61,4 +61,8 @@ class TrialService {
     await prefs.remove(_trialStartKey);
     print('🔄 Trial reset');
   }
+  static Future<bool> hasTrialEverStarted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_trialStartKey) != null;
+  }
 }

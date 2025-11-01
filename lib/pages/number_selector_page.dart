@@ -9,6 +9,7 @@ import '../services/storage_service.dart';
 import '../services/subscription_service.dart';
 import '../pages/subscription_page.dart';
 import 'dart:math';
+import '../services/trial_service.dart';
 
 class NumberSelectorPage extends StatefulWidget {
   const NumberSelectorPage({super.key});
@@ -387,6 +388,65 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     });
   }
 
+  // Add these helper methods to NumberSelectorPage:
+  Future<bool> _checkIfSubscribed() async {
+    final subscriptionService = SubscriptionService();
+    await subscriptionService.initialize();
+    return await subscriptionService.hasActiveSubscription();
+  }
+
+  Widget _buildPremiumBadge(bool isDarkMode) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.star, size: 16, color: Colors.blue),
+          SizedBox(width: 8),
+          Text(
+            'Premium Member',
+            style: TextStyle(
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrialStatus(int daysRemaining, bool isDarkMode) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.celebration, size: 16, color: Colors.green),
+          SizedBox(width: 8),
+          Text(
+            'Free Trial: $daysRemaining days remaining',
+            style: TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -435,6 +495,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Replace your existing _buildTrialStatusIndicator with this:
+          _buildTrialStatusIndicator(isDarkMode),
           Text(
             'Select a Tao Chapter (1-81):',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -615,6 +677,36 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // Replace your existing _buildTrialStatusIndicator with this:
+  Widget _buildTrialStatusIndicator(bool isDarkMode) {
+    return FutureBuilder<bool>(
+      future: _checkIfSubscribed(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox();
+        }
+
+        final isSubscribed = snapshot.data ?? false;
+
+        if (isSubscribed) {
+          // User is subscribed - show premium badge
+          return _buildPremiumBadge(isDarkMode);
+        } else {
+          // User is not subscribed - check trial status
+          return FutureBuilder<int>(
+            future: TrialService.getDaysRemaining(),
+            builder: (context, trialSnapshot) {
+              if (trialSnapshot.hasData && trialSnapshot.data! > 0) {
+                return _buildTrialStatus(trialSnapshot.data!, isDarkMode);
+              }
+              return SizedBox();
+            },
+          );
+        }
+      },
     );
   }
 }
