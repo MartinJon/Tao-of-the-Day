@@ -774,9 +774,9 @@ class MenuDialogs {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '• Tao content: Loaded from Google Sheets (public CSV)\n'
+                  '• Tao content: Loaded from a bundled JSON file on your device\n'
                       '• Audio files: Streamed from external hosting services\n'
-                      '• All external data is loaded in real-time, not stored permanently',
+                      '• No analytics or tracking',
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
