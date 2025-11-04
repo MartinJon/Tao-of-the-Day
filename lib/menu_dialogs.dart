@@ -1,14 +1,78 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'services/subscription_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'pages/subscription_page.dart';
+import 'services/subscription_service.dart';
 import '../services/trial_service.dart';
 
+class _MenuDialogPalette {
+  final Color primary;
+  final Color background;
+  final Color body;
+
+  const _MenuDialogPalette({
+    required this.primary,
+    required this.background,
+    required this.body,
+  });
+
+  factory _MenuDialogPalette.from(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return _MenuDialogPalette(
+      primary: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+      background: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+      body: isDarkMode ? Colors.white70 : Colors.black87,
+    );
+  }
+}
+
 class MenuDialogs {
-  static const String appVersion = '1.0.0';
+  static const String _fallbackAppVersion = '1.0.1+65';
+  static final Future<String> _appVersionFuture = _loadAppVersion();
+
+  static Future<String> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final buildNumber = packageInfo.buildNumber.trim();
+      return buildNumber.isNotEmpty
+          ? '${packageInfo.version}+$buildNumber'
+          : packageInfo.version;
+    } catch (error, stackTrace) {
+      debugPrint('Failed to read package info: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return _fallbackAppVersion;
+    }
+  }
+
+  static List<Widget> _defaultActions(BuildContext context) {
+    return [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Close'),
+      ),
+    ];
+  }
+
+  static Future<void> _launchExternalUrl(
+    BuildContext context,
+    String url,
+  ) async {
+    final uri = Uri.parse(url);
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched) {
+      debugPrint('Could not launch $url');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open link: $url')),
+      );
+    }
+  }
   // Menu button widget
   static PopupMenuButton<String> buildMenuButton(BuildContext context) {
     return PopupMenuButton<String>(
