@@ -46,7 +46,22 @@ class MenuDialogs {
       return _fallbackAppVersion;
     }
   }
+  Future<String> _readAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    return '${info.version} (${info.buildNumber})';
+  }
 
+  Widget buildAppVersionText(BuildContext context) {
+    return FutureBuilder<String>(
+      future: _readAppVersion(),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const SizedBox.shrink(); // or a small loading Text/Spinner
+        }
+        return Text('App Version: ${snap.data}');
+      },
+    );
+  }
   static List<Widget> _defaultActions(BuildContext context) {
     return [
       TextButton(
@@ -257,31 +272,40 @@ class MenuDialogs {
                     color: (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: GestureDetector(  // ← Wrap with GestureDetector
+                  child: GestureDetector(
                     onTap: () {
                       Navigator.pop(context); // Close about dialog
                       _showDeveloperMenu(context); // Show developer menu
                     },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'App Version: $appVersion', // ← Simple static version
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
                           color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        // ⬇️ Use FutureBuilder as its own widget (NOT inside Text)
+                        FutureBuilder<String>(
+                          future: PackageInfo.fromPlatform()
+                              .then((info) => '${info.version} (${info.buildNumber})'),
+                          builder: (context, snap) {
+                            final version = snap.data ?? '';
+                            return Text(
+                              version.isEmpty ? 'App Version' : 'App Version: $version',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                ),
+
               ],
             ),
           ),
@@ -297,16 +321,23 @@ class MenuDialogs {
   }
 
   static void showConceptDialog(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final headingColor = colorScheme.onSurface.withOpacity(0.87);
+    final bodyColor = colorScheme.onSurface.withOpacity(0.70);
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          backgroundColor: colorScheme.surface,
           title: Text(
             'The Tao Concept',
-            style: TextStyle(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
+            style: TextStyle(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -317,34 +348,33 @@ class MenuDialogs {
                   'Why One Tao Per Day?',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white70 : Colors.black87,
+                    color: headingColor,
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  '• Deep Contemplation: Focusing on one chapter allows for meaningful reflection',
-                  style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
-                ),
-                Text(
-                  '• Practical Integration: Gives time to apply the teaching in daily life',
-                  style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
-                ),
-                Text(
-                  '• Ancient Practice: Traditionally, Tao teachings were contemplated slowly',
-                  style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+                DefaultTextStyle.merge(
+                  style: TextStyle(color: bodyColor),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text('• Deep Contemplation: Focusing on one chapter allows for meaningful reflection'),
+                      Text('• Practical Integration: Gives time to apply the teaching in daily life'),
+                      Text('• Ancient Practice: Traditionally, Tao teachings were contemplated slowly'),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'How to Use This App:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white70 : Colors.black87,
+                    color: headingColor,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   '1. Select your Tao for the day\n2. Read the text slowly\n3. Listen to the discussions\n4. Reflect throughout the day\n5. Return tomorrow for new wisdom',
-                  style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+                  style: TextStyle(color: bodyColor),
                 ),
               ],
             ),
@@ -352,13 +382,14 @@ class MenuDialogs {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: Text('Close', style: TextStyle(color: colorScheme.primary)),
             ),
           ],
         );
       },
     );
   }
+
 
   static void showNoomVibeDialog(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
