@@ -131,7 +131,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(color: (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)).withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))),
               child: Column(children: [
-                Text('Then \$0.98/month', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))),
+                Text('Then \${premiumProduct.price}/month', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))),
                 SizedBox(height: 8),
                 Text('Cancel anytime during trial', style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87)),
               ]),
@@ -144,7 +144,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleSubscribe,
                 style: ElevatedButton.styleFrom(backgroundColor: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00), padding: const EdgeInsets.symmetric(vertical: 16)),
-                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('SUBSCRIBE FOR \$0.98/MONTH', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('SUBSCRIBE FOR \$099./MONTH', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 10),
