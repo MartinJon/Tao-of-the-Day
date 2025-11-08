@@ -141,4 +141,7 @@ class SubscriptionService {
       return false;
     }
   }
+  static Future<void> ensureInitialized() async {
+    await _instance.initialize();
+  }
 }

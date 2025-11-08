@@ -1,4 +1,3 @@
-//cd "C:\Users\MartinJon\AndroidStudioProjects\tao_of_the_day_app"
 // lib/main.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -24,9 +23,8 @@ import 'pages/subscription_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Initialize subscription service first
-  final subscriptionService = SubscriptionService();
-  await subscriptionService.initialize();
+  // 1. Initialize subscription service first - FIXED
+  await SubscriptionService.ensureInitialized();
 
   // 2. Start trial if this is user's first time
   await TrialService.startTrialIfNeeded();
@@ -70,11 +68,8 @@ void main() async {
 
 // NEW FUNCTION: The gatekeeper that decides if user can use the app
 Future<bool> _checkAppAccess() async {
-  final subscriptionService = SubscriptionService();
-  await subscriptionService.initialize();
-
   // Check if user has active subscription (paid user)
-  final hasActiveSubscription = await subscriptionService.hasActiveSubscription();
+  final hasActiveSubscription = await SubscriptionService().hasActiveSubscription();
   if (hasActiveSubscription) {
     print('💰 User has active subscription');
     return true;
