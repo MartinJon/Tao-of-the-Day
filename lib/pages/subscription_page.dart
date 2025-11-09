@@ -131,7 +131,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(color: (isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)).withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))),
               child: Column(children: [
-                Text('Then \${premiumProduct.price}/month', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))),
+              Text('Then ${premiumProduct?.price ?? "Loading..."}/month', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00))),
                 SizedBox(height: 8),
                 Text('Cancel anytime during trial', style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87)),
               ]),
