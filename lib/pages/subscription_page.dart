@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/subscription_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/trial_service.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 
 class SubscriptionPage extends StatefulWidget {
   const SubscriptionPage({super.key});
@@ -13,7 +14,19 @@ class SubscriptionPage extends StatefulWidget {
 class _SubscriptionPageState extends State<SubscriptionPage> {
   final SubscriptionService _subscriptionService = SubscriptionService();
   bool _isLoading = false;
+  ProductDetails? premiumProduct;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    // Load your product here from SubscriptionService
+    final subscriptionService = SubscriptionService();
+    // Get the product details and set state
+  }
   void _handleSubscribe() async {
     setState(() => _isLoading = true);
     try {
