@@ -1,3 +1,6 @@
+// lib/menu_dialogs.dart
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -6,7 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'pages/subscription_page.dart';
 import 'services/subscription_service.dart';
-import '../services/trial_service.dart';
+import 'services/trial_service.dart';
 
 class _MenuDialogPalette {
   final Color primary;
@@ -33,6 +36,35 @@ class MenuDialogs {
   static const String _fallbackAppVersion = '1.0.1+65';
   static final Future<String> _appVersionFuture = _loadAppVersion();
 
+  // ---- Subscription helpers -------------------------------------------------
+
+  static final SubscriptionService _subs = SubscriptionService();
+
+  static Future<bool> _isEntitled() async {
+    await _subs.initialize();               // ensure IAP ready
+    return _subs.hasActiveSubscription();   // fast cached read
+  }
+
+  static Future<void> _refreshEntitlement() async {
+    try {
+      await _subs.initialize();
+      await _subs.syncEntitlement();        // pull latest from store + cache it
+    } catch (_) {
+      // ignore for menu; user can still tap "Restore Purchases"
+    }
+  }
+
+// (Optional, only keep if you actually call it somewhere.)
+  static Future<bool> _loadEntitlementForMenu() async {
+    await _subs.initialize();
+    await _subs.syncEntitlement();
+    return _subs.hasActiveSubscription();
+  }
+
+
+
+  // ---- Version helpers ------------------------------------------------------
+
   static Future<String> _loadAppVersion() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
@@ -46,6 +78,7 @@ class MenuDialogs {
       return _fallbackAppVersion;
     }
   }
+
   Future<String> _readAppVersion() async {
     final info = await PackageInfo.fromPlatform();
     return '${info.version} (${info.buildNumber})';
@@ -56,12 +89,15 @@ class MenuDialogs {
       future: _readAppVersion(),
       builder: (context, snap) {
         if (!snap.hasData) {
-          return const SizedBox.shrink(); // or a small loading Text/Spinner
+          return const SizedBox.shrink();
         }
         return Text('App Version: ${snap.data}');
       },
     );
   }
+
+  // ---- Generic helpers ------------------------------------------------------
+
   static List<Widget> _defaultActions(BuildContext context) {
     return [
       TextButton(
@@ -72,9 +108,9 @@ class MenuDialogs {
   }
 
   static Future<void> _launchExternalUrl(
-    BuildContext context,
-    String url,
-  ) async {
+      BuildContext context,
+      String url,
+      ) async {
     final uri = Uri.parse(url);
     final launched = await launchUrl(
       uri,
@@ -88,84 +124,143 @@ class MenuDialogs {
       );
     }
   }
-  // Menu button widget
-  static PopupMenuButton<String> buildMenuButton(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.menu),
-      onSelected: (value) => handleMenuSelection(context, value),
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'about',
-          child: ListTile(
-            leading: Icon(Icons.info),
-            title: Text('About the App'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'concept',
-          child: ListTile(
-            leading: Icon(Icons.lightbulb),
-            title: Text('Tao of the Day Concept'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'subscribe',
-          child: ListTile(
-            leading: Icon(Icons.star),
-            title: Text('Go Premium'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'noomvibe',
-          child: ListTile(
-            leading: Icon(Icons.live_tv),
-            title: Text('Live Show on NoomVibe'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'translation',
-          child: ListTile(
-            leading: Icon(Icons.book),
-            title: Text('Get the Translation'),
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'privacy',
-          child: ListTile(
-            leading: Icon(Icons.privacy_tip),
-            title: Text('Privacy Policy'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'terms',
-          child: ListTile(
-            leading: Icon(Icons.description),
-            title: Text('Terms of Service'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'data',
-          child: ListTile(
-            leading: Icon(Icons.data_usage),
-            title: Text('Data Transparency'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'legal',
-          child: ListTile(
-            leading: Icon(Icons.gavel),
-            title: Text('Legal & Disclaimers'),
-          ),
-        ),
-      ],
+
+  // ---- Menu button ----------------------------------------------------------
+
+  /// Call this in your AppBars: `actions: [ MenuDialogs.buildMenuButton(context) ]`
+  static Widget buildMenuButton(BuildContext context) {
+    // Local snapshot to avoid flicker while we refresh on open
+    final ValueNotifier<bool?> entitled = ValueNotifier<bool?>(null);
+
+    return FutureBuilder<bool>(
+      // Initial entitlement check (cached)
+      future: _isEntitled(),
+      builder: (context, snapshot) {
+        entitled.value = snapshot.data;
+
+        return PopupMenuButton<String>(
+          icon: const Icon(Icons.menu),
+
+          // 🔄 Refresh entitlement when the menu actually opens
+          onOpened: () async {
+            await _refreshEntitlement();
+            final fresh = await _isEntitled();
+            entitled.value = fresh;
+          },
+
+          onSelected: (value) => handleMenuSelection(context, value),
+
+          itemBuilder: (BuildContext context) {
+            final items = <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'about',
+                child: ListTile(
+                  leading: Icon(Icons.info),
+                  title: Text('About the App'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'concept',
+                child: ListTile(
+                  leading: Icon(Icons.lightbulb),
+                  title: Text('Tao of the Day Concept'),
+                ),
+              ),
+              // We'll insert Subscribe/Manage at index 2 below.
+
+              const PopupMenuItem<String>(
+                value: 'noomvibe',
+                child: ListTile(
+                  leading: Icon(Icons.live_tv),
+                  title: Text('Live Show on NoomVibe'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'translation',
+                child: ListTile(
+                  leading: Icon(Icons.book),
+                  title: Text('Get the Translation'),
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<String>(
+                value: 'privacy',
+                child: ListTile(
+                  leading: Icon(Icons.privacy_tip),
+                  title: Text('Privacy Policy'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'terms',
+                child: ListTile(
+                  leading: Icon(Icons.description),
+                  title: Text('Terms of Service'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'data',
+                child: ListTile(
+                  leading: Icon(Icons.data_usage),
+                  title: Text('Data Transparency'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'legal',
+                child: ListTile(
+                  leading: Icon(Icons.gavel),
+                  title: Text('Legal & Disclaimers'),
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<String>(
+                value: 'restore',
+                child: ListTile(
+                  leading: Icon(Icons.restore),
+                  title: Text('Restore Purchases'),
+                ),
+              ),
+            ];
+
+            final isEntitled = entitled.value ?? false;
+
+            // Insert either "Go Premium" or "Manage Subscription" near the top
+            const insertIndex = 2;
+            if (isEntitled) {
+              items.insert(
+                insertIndex,
+                const PopupMenuItem<String>(
+                  value: 'manage',
+                  child: ListTile(
+                    leading: Icon(Icons.star),
+                    title: Text('Manage Subscription'),
+                  ),
+                ),
+              );
+            } else {
+              items.insert(
+                insertIndex,
+                const PopupMenuItem<String>(
+                  value: 'subscribe',
+                  child: ListTile(
+                    leading: Icon(Icons.star_border),
+                    title: Text('Go Premium'),
+                  ),
+                ),
+              );
+            }
+
+            return items;
+          },
+        );
+      },
     );
   }
 
-  // Menu selection handler
-  static void handleMenuSelection(BuildContext context, String value) {
+  // ---- Menu selection handler ----------------------------------------------
+
+  static void handleMenuSelection(BuildContext context, String value) async {
     switch (value) {
-        case 'about':
+      case 'about':
         showAboutDialog(context);
         break;
       case 'concept':
@@ -176,6 +271,12 @@ class MenuDialogs {
           context,
           MaterialPageRoute(builder: (context) => const SubscriptionPage()),
         );
+        break;
+      case 'manage':
+        _openManageSubscription();
+        break;
+      case 'restore':
+        await _handleRestoreFlow(context);
         break;
       case 'noomvibe':
         showNoomVibeDialog(context);
@@ -197,6 +298,45 @@ class MenuDialogs {
         break;
     }
   }
+
+  static Future<void> _handleRestoreFlow(BuildContext context) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    try {
+      await _subs.restorePurchases();
+      await _subs.syncEntitlement();
+      final ok = await _subs.hasActiveSubscription();
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text(ok
+              ? 'Purchases restored.'
+              : 'No active subscription found.'),
+        ),
+      );
+    } catch (e) {
+      scaffold.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
+    }
+  }
+
+  static void _openManageSubscription() {
+    // Android: Play account subscriptions
+    if (Platform.isAndroid) {
+      launchUrl(Uri.parse('https://play.google.com/store/account/subscriptions'),
+          mode: LaunchMode.externalApplication);
+      return;
+    }
+    // iOS: Apple subscriptions management
+    if (Platform.isIOS) {
+      // Apple’s manage page
+      launchUrl(Uri.parse('https://apps.apple.com/account/subscriptions'),
+          mode: LaunchMode.externalApplication);
+      return;
+    }
+    // Fallback (web/desktop)
+    launchUrl(Uri.parse('https://play.google.com/store/account/subscriptions'),
+        mode: LaunchMode.externalApplication);
+  }
+
+  // ---- Your existing dialogs (unchanged except for imports) -----------------
 
   static void showAboutDialog(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -286,7 +426,6 @@ class MenuDialogs {
                           color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00),
                         ),
                         const SizedBox(width: 8),
-                        // ⬇️ Use FutureBuilder as its own widget (NOT inside Text)
                         FutureBuilder<String>(
                           future: PackageInfo.fromPlatform()
                               .then((info) => '${info.version} (${info.buildNumber})'),
@@ -305,7 +444,6 @@ class MenuDialogs {
                     ),
                   ),
                 ),
-
               ],
             ),
           ),
@@ -389,7 +527,6 @@ class MenuDialogs {
       },
     );
   }
-
 
   static void showNoomVibeDialog(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -544,7 +681,6 @@ class MenuDialogs {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 GestureDetector(
                   onTap: () async {
                     final Uri uri = Uri.parse("https://www.martinjon.com/tao-app-privacy");
@@ -577,7 +713,6 @@ class MenuDialogs {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Data Collection & Usage',
                   style: TextStyle(
@@ -595,7 +730,6 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Local Storage',
                   style: TextStyle(
@@ -612,7 +746,6 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'External Links',
                   style: TextStyle(
@@ -627,7 +760,6 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Contact',
                   style: TextStyle(
@@ -684,7 +816,6 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Educational Purpose',
                   style: TextStyle(
@@ -699,13 +830,11 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Intellectual Property',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white70 : Colors.black87,
-                  ),
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -716,13 +845,11 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'User Responsibilities',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white70 : Colors.black87,
-                  ),
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -733,13 +860,11 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Limitation of Liability',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white70 : Colors.black87,
-                  ),
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -748,13 +873,11 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Changes to Terms',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white70 : Colors.black87,
-                  ),
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -797,7 +920,6 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -828,7 +950,6 @@ class MenuDialogs {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -838,28 +959,26 @@ class MenuDialogs {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
+                    children: const [
+                      Text(
                         '✅ Data We NEVER Collect:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Colors.green,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         '• Personal identification information\n'
                             '• Email addresses or contact details\n'
                             '• Location data or device identifiers\n'
                             '• Usage analytics or behavior tracking\n'
                             '• Payment or financial information',
-                        style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'External Data Sources:',
                   style: TextStyle(
@@ -875,7 +994,6 @@ class MenuDialogs {
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Your Privacy Matters',
                   style: TextStyle(
@@ -988,14 +1106,7 @@ class MenuDialogs {
     );
   }
 
-  // Helper method for launching URLs
-  //static Future<void> launchExternalUrl(String url) async {
-    //final Uri uri = Uri.parse(url);
-    //if (!await launchUrl(uri)) {
-      //throw Exception('Could not launch $url');
-    //}
-  //}
-// Add these methods to your MenuDialogs class:
+  // ---- Developer menu -------------------------------------------------------
 
   static void _showDeveloperMenu(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -1003,32 +1114,32 @@ class MenuDialogs {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Developer Options'),
+        title: const Text('Developer Options'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: Icon(Icons.delete, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
-              title: Text('Reset Trial'),
+              title: const Text('Reset Trial'),
               onTap: () {
                 TrialService.resetTrial();
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Trial reset'))
+                  const SnackBar(content: Text('Trial reset')),
                 );
               },
             ),
             ListTile(
               leading: Icon(Icons.visibility, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
-              title: Text('Check Subscription Status'),
-              onTap: () {
+              title: const Text('Check Subscription Status'),
+              onTap: () async {
                 Navigator.pop(context);
                 _checkSubscriptionStatus(context);
               },
             ),
             ListTile(
               leading: Icon(Icons.shopping_cart, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
-              title: Text('Force Subscription Page'),
+              title: const Text('Force Subscription Page'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -1044,10 +1155,9 @@ class MenuDialogs {
   }
 
   static void _checkSubscriptionStatus(BuildContext context) async {
-    final subscriptionService = SubscriptionService();
-    await subscriptionService.initialize();
-    final hasAccess = await subscriptionService.hasActiveSubscription();
-    final isSubscribed = await subscriptionService.hasActiveSubscription();
+    await _subs.initialize();
+    final hasAccess = await _subs.hasActiveSubscription();
+    final isSubscribed = await _subs.hasActiveSubscription();
     final inTrial = await TrialService.isTrialActive();
     final daysRemaining = await TrialService.getDaysRemaining();
 
@@ -1070,11 +1180,10 @@ class MenuDialogs {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+            child: const Text('Close'),
           ),
         ],
       ),
     );
   }
-
 }

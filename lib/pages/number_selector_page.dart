@@ -392,8 +392,11 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
   Future<bool> _checkIfSubscribed() async {
     final subscriptionService = SubscriptionService();
     await subscriptionService.initialize();
-    return await subscriptionService.hasActiveSubscription();
+    await subscriptionService.syncEntitlement();       // 🔄 refresh from store
+    return subscriptionService.hasActiveSubscription(); // ✅ read cached
   }
+
+
 
   Widget _buildPremiumBadge(bool isDarkMode) {
     return Container(
@@ -402,17 +405,17 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       decoration: BoxDecoration(
         color: Colors.blue.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue),
+        border: Border.all(color: Color(0xFFD45C33)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.star, size: 16, color: Colors.blue),
+          Icon(Icons.star, size: 16, color: Color(0xFFD45C33)),
           SizedBox(width: 8),
           Text(
             'Premium Member',
             style: TextStyle(
-              color: Colors.blue,
+              color: Color(0xFFD45C33),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -428,17 +431,17 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       decoration: BoxDecoration(
         color: Colors.green.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green),
+        border: Border.all(color: Color(0xFFD45C33)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.celebration, size: 16, color: Colors.green),
+          Icon(Icons.celebration, size: 16, color: Color(0xFFD45C33)),
           SizedBox(width: 8),
           Text(
             'Free Trial: $daysRemaining days remaining',
             style: TextStyle(
-              color: Colors.green,
+              color: Color(0xFFD45C33),
               fontWeight: FontWeight.bold,
             ),
           ),

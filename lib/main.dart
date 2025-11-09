@@ -25,12 +25,19 @@ void main() async {
 
   // 1. Initialize subscription service first - FIXED
   await SubscriptionService.ensureInitialized();
+  // 1. Initialize subscription service first - FIXED
+  await SubscriptionService().syncEntitlement(); // replaces refreshPurchases()
+
+
+  // 1b. Refresh past purchases so entitlement is correct before gating
+  await SubscriptionService().refreshPurchases();
 
   // 2. Start trial if this is user's first time
   await TrialService.startTrialIfNeeded();
 
   // 3. CHECK SUBSCRIPTION ACCESS - THIS IS THE GATEKEEPER
   final bool canAccessApp = await _checkAppAccess();
+
 
   if (!canAccessApp) {
     // USER CANNOT ACCESS APP - show subscription page immediately
@@ -68,24 +75,19 @@ void main() async {
 
 // NEW FUNCTION: The gatekeeper that decides if user can use the app
 Future<bool> _checkAppAccess() async {
-  // Check if user has active subscription (paid user)
+  // Re-sync before deciding
+  await SubscriptionService().syncEntitlement();
+
   final hasActiveSubscription = await SubscriptionService().hasActiveSubscription();
-  if (hasActiveSubscription) {
-    print('💰 User has active subscription');
-    return true;
-  }
+  if (hasActiveSubscription) return true;
 
-  // Check if user is in trial period (new user)
   final trialActive = await TrialService.isTrialActive();
-  if (trialActive) {
-    print('🆓 User is in trial period');
-    return true;
-  }
+  if (trialActive) return true;
 
-  // User has no subscription and trial expired - NO ACCESS
-  print('❌ User has no subscription and trial expired');
   return false;
 }
+
+
 
 // Simplified helper to launch directly to Tao detail
 Future<void> _launchToTaoDetail(int taoNumber) async {
