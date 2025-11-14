@@ -34,9 +34,16 @@
      scripts:
        - name: Set up code signing
          script: |
-           app-store-connect fetch-signing-files com.martinjon.taoapp --type IOS_APP_STORE --create
+           app-store-connect fetch-signing-files com.martinjon.taoapp \
+           --type IOS_APP_STORE \
+           --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
+           --create
+       - name: Set up Keychain
+         script: |
+           keychain initialize
        - name: Build iOS
          script: |
+           xcode-project use-profiles
            flutter clean
            flutter pub get
            flutter build ipa --release  --export-options-plist=/Users/builder/export_options.plist
