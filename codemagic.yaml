@@ -21,27 +21,33 @@
         recipients:
           - mjongarcia@gmail.com
 
-  # COMMENT OUT OR REMOVE THE iOS WORKFLOW
-  # ios-release:
-  #   name: iOS Release - Auto Signing
-  #   environment:
-  #     flutter: stable
-  #     groups:
-  #       - app_store_credentials
-  #   scripts:
-  #     - name: Build iOS
-  #       script: |
-  #         flutter clean
-  #         flutter pub get
-  #         flutter build ipa --release
-  #   artifacts:
-  #     - build/ios/ipa/*.ipa
-  #   publishing:
-  #     app_store_connect:
-  #       api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-  #       key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-  #       issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-  #       submit_to_testflight: true
-  #     email:
-  #       recipients:
-  #         - mjongarcia@gmail.com
+#   COMMENT OUT OR REMOVE THE iOS WORKFLOW
+  ios-release:
+     name: iOS Release - Auto Signing
+     instance_type: mac_mini_m2
+     environment:
+       flutter: stable
+       groups:
+         - app_store_credentials
+       xcode: latest
+       cocoapods: default
+     scripts:
+       - name: Set up code signing
+         script: |
+           app-store-connect fetch-signing-files com.martinjon.taoapp --type IOS_APP_STORE --create
+       - name: Build iOS
+         script: |
+           flutter clean
+           flutter pub get
+           flutter build ipa --release  --export-options-plist=/Users/builder/export_options.plist
+     artifacts:
+       - build/ios/ipa/*.ipa
+     publishing:
+       app_store_connect:
+         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+         submit_to_testflight: true
+       email:
+         recipients:
+           - mjongarcia@gmail.com
