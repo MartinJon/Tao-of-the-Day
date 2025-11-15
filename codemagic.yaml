@@ -25,16 +25,12 @@
   ios-release:
     name: iOS Release - Auto Signing
     instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Codemagic Integration
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.martinjon.taoapp
-      vars:
-        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
-        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
-      groups:
-        - app_store_credentials
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -42,16 +38,14 @@
       - name: Install dependencies
         script: |
           flutter packages pub get
-      - name: Build iOS with Flutter
+      - name: Build iOS
         script: |
           flutter build ipa --release
     artifacts:
       - build/ios/ipa/*.ipa
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        auth: integration
         submit_to_testflight: true
       email:
         recipients:
