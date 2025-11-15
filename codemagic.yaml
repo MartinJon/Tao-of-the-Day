@@ -32,22 +32,21 @@
        xcode: latest
        cocoapods: default
      scripts:
-       - name: Set up code signing
-         script: |
-           app-store-connect fetch-signing-files com.martinjon.taoapp \
-           --type IOS_APP_STORE \
-           --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
-           --create
+#       - name: Set up code signing
+#         script: |
+#           app-store-connect fetch-signing-files com.martinjon.taoapp \
+#           --type IOS_APP_STORE \
+#           --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
+#           --create
        - name: Set up Keychain
          script: |
            keychain initialize
        - name: Build iOS
          script: |
-           xcode-project use-profiles
+           xcode-project use-profiles --verbose
            flutter clean
            flutter pub get
-           flutter build ipa --release  --export-options-plist=/Users/builder/export_options.plist
-     artifacts:
+           flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist --verbose --dart-define=CM.allowProvisioningUpdates=true     artifacts:
        - build/ios/ipa/*.ipa
      publishing:
        app_store_connect:
