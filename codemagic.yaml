@@ -43,11 +43,10 @@
            keychain initialize
        - name: Build iOS
          script: |
-           xcode-project use-profiles
            flutter clean
            flutter pub get
            xcode-project build-ipa \
-             --project "ios/Runner.xcworkspace" \
+             --workspace "ios/Runner.xcworkspace" \
              --scheme "Runner" \
              --archive-flags="-allowProvisioningUpdates"
      publishing:
