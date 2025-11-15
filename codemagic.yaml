@@ -27,7 +27,7 @@
     instance_type: mac_mini_m2
     environment:
       groups:
-        - iOS_signing
+        - ios_signing
         - app_store_credentials
       flutter: stable
       xcode: latest
