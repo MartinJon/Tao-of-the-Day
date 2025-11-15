@@ -46,8 +46,7 @@
            xcode-project use-profiles --verbose
            flutter clean
            flutter pub get
-           flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist --verbose --dart-define=CM.allowProvisioningUpdates=true     artifacts:
-       - build/ios/ipa/*.ipa
+           flutter build ipa --release --verbose
      publishing:
        app_store_connect:
          api_key: $APP_STORE_CONNECT_PRIVATE_KEY
