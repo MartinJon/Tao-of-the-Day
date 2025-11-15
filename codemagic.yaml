@@ -43,10 +43,13 @@
            keychain initialize
        - name: Build iOS
          script: |
-           xcode-project use-profiles --verbose
+           xcode-project use-profiles
            flutter clean
            flutter pub get
-           flutter build ipa --release --verbose
+           xcode-project build-ipa \
+             --project "ios/Runner.xcworkspace" \
+             --scheme "Runner" \
+             --archive-flags="-allowProvisioningUpdates"
      publishing:
        app_store_connect:
          api_key: $APP_STORE_CONNECT_PRIVATE_KEY
