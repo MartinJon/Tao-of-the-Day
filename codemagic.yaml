@@ -48,33 +48,13 @@
           
           # Install provisioning profile
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          PROFILE_UUID=$(grep -a -A 1 UUID /tmp/profile.mobileprovision | grep string | sed 's/<string>//;s/<\/string>//' | tr -d '\t ')
+          PROFILE_UUID=$(grep -aA1 UUID /tmp/profile.mobileprovision | grep string | sed 's/<[^>]*>//g' | tr -d '\t\n ')
           cp /tmp/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
           
       - name: Build iOS
         script: |
           flutter pub get
-          flutter build ios --release --no-codesign
-          
-          # Get certificate identity
-          CERT_NAME=$(security find-identity -v -p codesigning build.keychain | head -1 | grep -o '".*"' | tr -d '"')
-          
-          # Archive and export with xcodebuild
-          cd ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -archivePath build/Runner.xcarchive archive CODE_SIGN_IDENTITY="$CERT_NAME" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=ZNJH9AA2CY
-          
-          xcodebuild -exportArchive -archivePath build/Runner.xcarchive -exportPath build/ipa -exportOptionsPlist <(echo '<?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>ZNJH9AA2CY</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-          </dict>
-          </plist>')
+          flutter build ipa --release
           
     artifacts:
       - build/ios/ipa/*.ipa
