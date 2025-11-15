@@ -23,39 +23,31 @@
 
 #   COMMENT OUT OR REMOVE THE iOS WORKFLOW
   ios-release:
-     name: iOS Release - Auto Signing
-     instance_type: mac_mini_m2
-     environment:
-       flutter: stable
-       groups:
-         - app_store_credentials
-       xcode: latest
-       cocoapods: default
-     scripts:
-#       - name: Set up code signing
-#         script: |
-#           app-store-connect fetch-signing-files com.martinjon.taoapp \
-#           --type IOS_APP_STORE \
-#           --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
-#           --create
-       - name: Set up Keychain
-         script: |
-           keychain initialize
-       - name: Build iOS
-         script: |
-           flutter clean
-           flutter pub get
-           xcode-project use-profiles
-           xcode-project build-ipa \
-             --workspace "ios/Runner.xcworkspace" \
-             --scheme "Runner" \
-             --archive-flags="-allowProvisioningUpdates"
-     publishing:
-       app_store_connect:
-         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-         submit_to_testflight: true
-       email:
-         recipients:
-           - mjongarcia@gmail.com
+    name: iOS Release - Auto Signing
+    instance_type: mac_mini_m2
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.martinjon.taoapp
+      groups:
+        - app_store_credentials
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install dependencies
+        script: |
+          flutter packages pub get
+      - name: Build iOS
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=$HOME/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+      email:
+        recipients:
+          - mjongarcia@gmail.com
