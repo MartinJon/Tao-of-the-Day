@@ -51,24 +51,30 @@
           PROFILE_UUID=$(grep -a -A 1 UUID /tmp/profile.mobileprovision | grep string | sed 's/<string>//;s/<\/string>//' | tr -d '\t ')
           cp /tmp/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
           
-      - name: Configure Xcode for manual signing
-        script: |
-          # Get certificate name
-          CERT_NAME=$(security find-identity -v -p codesigning build.keychain | head -1 | grep -o '".*"' | tr -d '"')
-          
-          # Get profile UUID
-          PROFILE_UUID=$(grep -a -A 1 UUID ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | grep string | sed 's/<string>//;s/<\/string>//' | tr -d '\t ')
-          
-          # Configure Xcode project for manual signing
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' "s/DEVELOPMENT_TEAM = \"\";/DEVELOPMENT_TEAM = ZNJH9AA2CY;/" ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' "s/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"iPhone Developer\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"$CERT_NAME\";/" ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \"\";/PROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_UUID\";/" ios/Runner.xcodeproj/project.pbxproj
-          
       - name: Build iOS
         script: |
           flutter pub get
-          flutter build ipa --release
+          flutter build ios --release --no-codesign
+          
+          # Get certificate identity
+          CERT_NAME=$(security find-identity -v -p codesigning build.keychain | head -1 | grep -o '".*"' | tr -d '"')
+          
+          # Archive and export with xcodebuild
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -archivePath build/Runner.xcarchive archive CODE_SIGN_IDENTITY="$CERT_NAME" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=ZNJH9AA2CY
+          
+          xcodebuild -exportArchive -archivePath build/Runner.xcarchive -exportPath build/ipa -exportOptionsPlist <(echo '<?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>ZNJH9AA2CY</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+          </dict>
+          </plist>')
           
     artifacts:
       - build/ios/ipa/*.ipa
