@@ -23,29 +23,46 @@
 
 #   COMMENT OUT OR REMOVE THE iOS WORKFLOW
   ios-release:
-    name: iOS Release - Auto Signing
+    name: iOS Release - Manual Signing
     instance_type: mac_mini_m2
-    integrations:
-      app_store_connect: Codemagic Integration
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.martinjon.taoapp
+      groups:
+        - iOS_signing
+        - app_store_credentials
       flutter: stable
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Install dependencies
+      - name: Set up signing files
         script: |
-          flutter packages pub get
+          echo $CM_CERTIFICATE | base64 --decode > /tmp/certificate.p12
+          echo $CM_PROVISIONING_PROFILE | base64 --decode > /tmp/profile.mobileprovision
+          
+          # Install certificate
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-keychain-settings build.keychain
+          security import /tmp/certificate.p12 -k build.keychain -P $CM_CERTIFICATE_PASSWORD -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          
+          # Install provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp /tmp/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+          
       - name: Build iOS
         script: |
+          flutter pub get
           flutter build ipa --release
+          
     artifacts:
       - build/ios/ipa/*.ipa
+      
     publishing:
       app_store_connect:
-        auth: integration
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
       email:
         recipients:
