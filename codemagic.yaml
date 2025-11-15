@@ -23,39 +23,68 @@
 
 #   COMMENT OUT OR REMOVE THE iOS WORKFLOW
   ios-release:
-     name: iOS Release - Auto Signing
-     instance_type: mac_mini_m2
-     environment:
-       flutter: stable
-       groups:
-         - app_store_credentials
-       xcode: latest
-       cocoapods: default
-     scripts:
-#       - name: Set up code signing
-#         script: |
-#           app-store-connect fetch-signing-files com.martinjon.taoapp \
-#           --type IOS_APP_STORE \
-#           --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
-#           --create
-       - name: Set up Keychain
-         script: |
-           keychain initialize
-       - name: Build iOS
-         script: |
-           flutter clean
-           flutter pub get
-           xcode-project use-profiles
-           xcode-project build-ipa \
-             --workspace "ios/Runner.xcworkspace" \
-             --scheme "Runner" \
-             --archive-flags="-allowProvisioningUpdates"
-     publishing:
-       app_store_connect:
-         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-         submit_to_testflight: true
-       email:
-         recipients:
-           - mjongarcia@gmail.com
+    name: iOS Release - Manual Signing
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - ios_signing
+        - app_store_credentials
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up signing files
+        script: |
+          echo $CM_CERTIFICATE | base64 --decode > /tmp/certificate.p12
+          echo $CM_PROVISIONING_PROFILE | base64 --decode > /tmp/profile.mobileprovision
+          
+          # Install certificate
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-keychain-settings build.keychain
+          security import /tmp/certificate.p12 -k build.keychain -P $CM_CERTIFICATE_PASSWORD -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          
+          # Install provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          PROFILE_UUID=$(grep -a -A 1 UUID /tmp/profile.mobileprovision | grep string | sed 's/<string>//;s/<\/string>//' | tr -d '\t ')
+          cp /tmp/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
+          
+      - name: Build iOS
+        script: |
+          flutter pub get
+          flutter build ios --release --no-codesign
+          
+          # Get certificate identity
+          CERT_NAME=$(security find-identity -v -p codesigning build.keychain | head -1 | grep -o '".*"' | tr -d '"')
+          
+          # Archive and export with xcodebuild
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -archivePath build/Runner.xcarchive archive CODE_SIGN_IDENTITY="$CERT_NAME" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=ZNJH9AA2CY
+          
+          xcodebuild -exportArchive -archivePath build/Runner.xcarchive -exportPath build/ipa -exportOptionsPlist <(echo '<?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>ZNJH9AA2CY</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+          </dict>
+          </plist>')
+          
+    artifacts:
+      - build/ios/ipa/*.ipa
+      
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+      email:
+        recipients:
+          - mjongarcia@gmail.com
