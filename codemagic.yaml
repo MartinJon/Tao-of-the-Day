@@ -54,11 +54,9 @@
       - name: Build iOS
         script: |
           flutter pub get
-          flutter build ipa --release --no-codesign
           xcode-project build-ipa \
             --workspace "ios/Runner.xcworkspace" \
             --scheme "Runner" \
-            --export-method "app-store" \
             --archive-flags="-allowProvisioningUpdates"
           
     artifacts:
