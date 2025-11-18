@@ -54,7 +54,11 @@
       - name: Build iOS
         script: |
           flutter pub get
-          flutter build ipa --release
+          flutter build ipa --release --no-codesign
+          xcode-project use-profiles
+          xcode-project build-ipa \
+            --workspace "ios/Runner.xcworkspace" \
+            --scheme "Runner"
           
     artifacts:
       - build/ios/ipa/*.ipa
