@@ -166,7 +166,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.auto_awesome,
+            Icon(Icons.spa,
                 size: 80,
                 color: isDarkMode
                     ? const Color(0xFFD45C33)
