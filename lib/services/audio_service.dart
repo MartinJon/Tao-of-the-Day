@@ -37,16 +37,15 @@ class AudioService with ChangeNotifier {
     // --- iOS Background Audio Configuration ---
     // Guard with !kIsWeb so this file doesn't break if you ever build for web.
     if (!kIsWeb && Platform.isIOS) {
-      AudioPlayer.global.setAudioContext(
-        const AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playback,
-            options: [
-              AVAudioSessionOptions.mixWithOthers,
-              AVAudioSessionOptions.allowBluetooth,
-              AVAudioSessionOptions.defaultToSpeaker,
-            ],
-          ),
+      final audioContext = AudioContext(
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+          options: [
+            AVAudioSessionOptions.mixWithOthers,
+            AVAudioSessionOptions.allowBluetooth,
+            AVAudioSessionOptions.defaultToSpeaker,
+          ],
+        ),
           // This Android block is just config; it's *not* used on iOS,
           // but it's good to define it for consistency if you ever call
           // setAudioContext on Android too.

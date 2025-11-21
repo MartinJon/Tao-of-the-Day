@@ -19,6 +19,7 @@ import 'widgets/universal_audio_player.dart';
 import 'services/subscription_service.dart';
 import 'services/shared_prefrences.dart';
 import 'pages/subscription_page.dart';
+import 'services/audio_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -123,7 +124,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
+    return ChangeNotifierProvider<AudioService>(
       create: (context) => AudioService(),
       child: MaterialApp(
         title: 'Tao of the Day',
