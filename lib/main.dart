@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import 'models/tao_data.dart';
 import 'pages/number_selector_page.dart';
 import 'pages/tao_detail_page.dart';
@@ -24,11 +24,9 @@ import 'services/audio_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Initialize subscription service first - FIXED
+  // 1. Initialize subscription service first
   await SubscriptionService.ensureInitialized();
-  // 1. Initialize subscription service first - FIXED
   await SubscriptionService().syncEntitlement(); // replaces refreshPurchases()
-
 
   // 1b. Refresh past purchases so entitlement is correct before gating
   await SubscriptionService().refreshPurchases();
@@ -39,14 +37,15 @@ void main() async {
   // 3. CHECK SUBSCRIPTION ACCESS - THIS IS THE GATEKEEPER
   final bool canAccessApp = await _checkAppAccess();
 
-
   if (!canAccessApp) {
     // USER CANNOT ACCESS APP - show subscription page immediately
     print('🚫 User cannot access app - showing subscription page');
-    runApp(const MyApp(
-      showWelcome: false, // Required parameter
-      showSubscriptionRequired: true,
-    ));
+    _runWithAudio(
+      const MyApp(
+        showWelcome: false, // Required parameter
+        showSubscriptionRequired: true,
+      ),
+    );
     return;
   }
 
@@ -57,7 +56,7 @@ void main() async {
   final bool hasSeenWelcome = await StorageService.shouldShowWelcome();
 
   if (!hasSeenWelcome) {
-    runApp(const MyApp(showWelcome: true));
+    _runWithAudio(const MyApp(showWelcome: true));
     return;
   }
 
@@ -70,8 +69,18 @@ void main() async {
   if (lastSelectedDate == currentDate && lastSelectedNumber > 0) {
     await _launchToTaoDetail(lastSelectedNumber);
   } else {
-    runApp(const MyApp(showWelcome: false));
+    _runWithAudio(const MyApp(showWelcome: false));
   }
+}
+
+// Wraps the app with AudioService provider so it's available everywhere
+void _runWithAudio(Widget app) {
+  runApp(
+    ChangeNotifierProvider<AudioService>(
+      create: (_) => AudioService(),
+      child: app,
+    ),
+  );
 }
 
 // NEW FUNCTION: The gatekeeper that decides if user can use the app
@@ -79,7 +88,8 @@ Future<bool> _checkAppAccess() async {
   // Re-sync before deciding
   await SubscriptionService().syncEntitlement();
 
-  final hasActiveSubscription = await SubscriptionService().hasActiveSubscription();
+  final hasActiveSubscription =
+  await SubscriptionService().hasActiveSubscription();
   if (hasActiveSubscription) return true;
 
   final trialActive = await TrialService.isTrialActive();
@@ -87,8 +97,6 @@ Future<bool> _checkAppAccess() async {
 
   return false;
 }
-
-
 
 // Simplified helper to launch directly to Tao detail
 Future<void> _launchToTaoDetail(int taoNumber) async {
@@ -100,13 +108,15 @@ Future<void> _launchToTaoDetail(int taoNumber) async {
     );
 
     if (taoData.number != 0) {
-      runApp(MyApp(showWelcome: false, initialTao: taoData));
+      _runWithAudio(
+        MyApp(showWelcome: false, initialTao: taoData),
+      );
     } else {
-      runApp(const MyApp(showWelcome: false));
+      _runWithAudio(const MyApp(showWelcome: false));
     }
   } catch (e) {
     print('❌ Error launching to Tao detail: $e');
-    runApp(const MyApp(showWelcome: false));
+    _runWithAudio(const MyApp(showWelcome: false));
   }
 }
 
@@ -124,71 +134,71 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<AudioService>(
-      create: (context) => AudioService(),
-      child: MaterialApp(
-        title: 'Tao of the Day',
-        theme: ThemeData(
-          primaryColor: const Color(0xFFAB3300),
-          scaffoldBackgroundColor: const Color(0xFFFFD26F),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF7E1A00),
-            foregroundColor: Colors.white,
-            elevation: 0,
-          ),
-          textTheme: TextTheme(
-            headlineSmall: TextStyle(
-              color: const Color(0xFF7E1A00),
-              fontWeight: FontWeight.bold,
-            ),
-            bodyMedium: TextStyle(
-              color: Colors.black,
-            ),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7E1A00),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          brightness: Brightness.light,
+    // NOTE: AudioService is provided OUTSIDE MyApp via _runWithAudio()
+    return MaterialApp(
+      title: 'Tao of the Day',
+      theme: ThemeData(
+        primaryColor: const Color(0xFFAB3300),
+        scaffoldBackgroundColor: const Color(0xFFFFD26F),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF7E1A00),
+          foregroundColor: Colors.white,
+          elevation: 0,
         ),
-        darkTheme: ThemeData(
-          primaryColor: const Color(0xFFD45C33),
-          scaffoldBackgroundColor: const Color(0xFF1A1A1A),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF5C1A00),
-            foregroundColor: Colors.white,
-            elevation: 0,
+        textTheme: TextTheme(
+          headlineSmall: TextStyle(
+            color: const Color(0xFF7E1A00),
+            fontWeight: FontWeight.bold,
           ),
-          textTheme: TextTheme(
-            headlineSmall: TextStyle(
-              color: const Color(0xFFD45C33),
-              fontWeight: FontWeight.bold,
-            ),
-            bodyMedium: TextStyle(
-              color: Colors.white70,
-            ),
+          bodyMedium: TextStyle(
+            color: Colors.black,
           ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5C1A00),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          brightness: Brightness.dark,
         ),
-        themeMode: ThemeMode.system,
-        home: _buildHome(),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF7E1A00),
+            foregroundColor: Colors.white,
+            padding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        brightness: Brightness.light,
       ),
+      darkTheme: ThemeData(
+        primaryColor: const Color(0xFFD45C33),
+        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF5C1A00),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        textTheme: TextTheme(
+          headlineSmall: TextStyle(
+            color: const Color(0xFFD45C33),
+            fontWeight: FontWeight.bold,
+          ),
+          bodyMedium: TextStyle(
+            color: Colors.white70,
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF5C1A00),
+            foregroundColor: Colors.white,
+            padding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        brightness: Brightness.dark,
+      ),
+      themeMode: ThemeMode.system,
+      home: _buildHome(),
     );
   }
 
