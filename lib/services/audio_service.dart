@@ -1,8 +1,10 @@
 // services/audio_service.dart
+// lib/services/audio_service.dart
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:audioplayers_platform_interface/audioplayers_platform_interface.dart';
-import 'package:flutter/foundation.dart';
 
 class AudioService with ChangeNotifier {
   static final AudioService _instance = AudioService._internal();
@@ -35,7 +37,6 @@ class AudioService with ChangeNotifier {
 
   void _setupAudioPlayer() {
     // --- iOS Background Audio Configuration ---
-    // Guard with !kIsWeb so this file doesn't break if you ever build for web.
     if (!kIsWeb && Platform.isIOS) {
       final audioContext = AudioContext(
         iOS: AudioContextIOS(
@@ -46,18 +47,16 @@ class AudioService with ChangeNotifier {
             AVAudioSessionOptions.defaultToSpeaker,
           ],
         ),
-          // This Android block is just config; it's *not* used on iOS,
-          // but it's good to define it for consistency if you ever call
-          // setAudioContext on Android too.
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: false,
-            stayAwake: true,
-            contentType: AndroidContentType.music,
-            usageType: AndroidUsageType.media,
-            audioFocus: AndroidAudioFocus.gain,
-          ),
+        android: AudioContextAndroid(
+          isSpeakerphoneOn: false,
+          stayAwake: true,
+          contentType: AndroidContentType.music,
+          usageType: AndroidUsageType.media,
+          audioFocus: AndroidAudioFocus.gain,
         ),
       );
+
+      AudioPlayer.global.setAudioContext(audioContext);
     }
 
     // --- State listeners ---
@@ -129,16 +128,15 @@ class AudioService with ChangeNotifier {
     notifyListeners();
   }
 
-  // If you want continuous background audio on iOS,
-  // DO NOT pause on app pause.
+  // Lifecycle hooks – keep empty so background audio is allowed
   void onAppPaused() {
-    // Intentionally left empty – let it keep playing in background.
-    // If you *do* want Android to pause on background, you could do:
+    // Intentionally left empty to allow background playback.
+    // If you ever want Android-only pause-on-background:
     // if (Platform.isAndroid && isPlaying) pauseAudio();
   }
 
   void onAppResumed() {
-    // No special handling needed if you don't auto-pause.
+    // No special handling needed right now.
   }
 
   @override
@@ -147,3 +145,4 @@ class AudioService with ChangeNotifier {
     super.dispose();
   }
 }
+
