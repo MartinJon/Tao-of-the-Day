@@ -41,11 +41,11 @@ class AudioService with ChangeNotifier {
       final audioContext = AudioContext(
         iOS: AudioContextIOS(
           category: AVAudioSessionCategory.playback,
-          options: [
+          options: {
             AVAudioSessionOptions.mixWithOthers,
             AVAudioSessionOptions.allowBluetooth,
             AVAudioSessionOptions.defaultToSpeaker,
-          ],
+          },
         ),
         android: AudioContextAndroid(
           isSpeakerphoneOn: false,
