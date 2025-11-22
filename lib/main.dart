@@ -99,23 +99,36 @@ Future<bool> _checkAppAccess() async {
 }
 
 // Simplified helper to launch directly to Tao detail
+// Simplified helper to launch directly to Tao detail
 Future<void> _launchToTaoDetail(int taoNumber) async {
   try {
+    print('🔄 DEBUG: Attempting to load Tao data...');
     final taoDataList = await TaoService.loadLocalTaoData();
+    print('✅ DEBUG: Loaded ${taoDataList.length} Tao entries');
+
+    if (taoDataList.isEmpty) {
+      print('❌ DEBUG: taoDataList is EMPTY!');
+    } else {
+      print('🔢 DEBUG: First Tao entry: ${taoDataList.first.number} - ${taoDataList.first.title}');
+    }
+
     final taoData = taoDataList.firstWhere(
           (data) => data.number == taoNumber,
       orElse: () => TaoData.empty(),
     );
 
     if (taoData.number != 0) {
+      print('🎯 DEBUG: Found Tao $taoNumber - ${taoData.title}');
       _runWithAudio(
         MyApp(showWelcome: false, initialTao: taoData),
       );
     } else {
+      print('❌ DEBUG: Could not find Tao $taoNumber in the list');
       _runWithAudio(const MyApp(showWelcome: false));
     }
   } catch (e) {
-    print('❌ Error launching to Tao detail: $e');
+    print('❌ DEBUG: Error in _launchToTaoDetail: $e');
+    print('❌ DEBUG: Error type: ${e.runtimeType}');
     _runWithAudio(const MyApp(showWelcome: false));
   }
 }
