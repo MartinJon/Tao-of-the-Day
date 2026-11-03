@@ -59,7 +59,6 @@ class StorageService {
     // Simple device time check
     final currentDeviceDate = DateFormat('yyyyMMdd').format(DateTime.now());
 
-    print('📅 DATE CHECK: Last selected: $lastSelectedDate, Current device: $currentDeviceDate');
 
     return lastSelectedDate != currentDeviceDate;
   }
@@ -73,7 +72,6 @@ class StorageService {
     await prefs.setInt('selectedNumber', number);
     await prefs.setString('selectedNumberDate', currentDeviceDate);
 
-    print('💾 Saved Tao $number for date: $currentDeviceDate');
   }
 
   static Future<int> getLastSelectedNumber() async {

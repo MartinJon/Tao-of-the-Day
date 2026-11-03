@@ -33,7 +33,6 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    print('App lifecycle state changed: $state');
   }
 
   void _showNotesDialog(BuildContext context) {

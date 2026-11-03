@@ -16,29 +16,18 @@ import 'services/storage_service.dart';
 import 'services/tao_service.dart';
 import 'widgets/universal_audio_player.dart';
 import 'services/subscription_service.dart';
-import 'services/shared_prefrences.dart';
 import 'pages/subscription_page.dart';
 import 'services/audio_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Initialize subscription service first
+  // Store-managed subscription is the only gate. initialize() and
+  // syncEntitlement() handle their own errors, so launch never stops here.
   await SubscriptionService.ensureInitialized();
-  await SubscriptionService().syncEntitlement(); // replaces refreshPurchases()
-
-  // 1b. Refresh past purchases so entitlement is correct before gating
-  await SubscriptionService().refreshPurchases();
-
-  // 2. Start trial if this is user's first time
-  await TrialService.startTrialIfNeeded();
-
-  // 3. CHECK SUBSCRIPTION ACCESS - THIS IS THE GATEKEEPER
-  final bool canAccessApp = await _checkAppAccess();
+  final bool canAccessApp = await SubscriptionService().syncEntitlement();
 
   if (!canAccessApp) {
-    // USER CANNOT ACCESS APP - show subscription page immediately
-    print('🚫 User cannot access app - showing subscription page');
     _runWithAudio(
       const MyApp(
         showWelcome: false, // Required parameter
@@ -47,9 +36,6 @@ void main() async {
     );
     return;
   }
-
-  // USER CAN ACCESS APP - continue with normal app flow
-  print('✅ User can access app - showing normal content');
 
   // Existing welcome flow for users with access
   final bool hasSeenWelcome = await StorageService.shouldShowWelcome();
@@ -82,33 +68,13 @@ void _runWithAudio(Widget app) {
   );
 }
 
-// NEW FUNCTION: The gatekeeper that decides if user can use the app
-Future<bool> _checkAppAccess() async {
-  // Re-sync before deciding
-  await SubscriptionService().syncEntitlement();
-
-  final hasActiveSubscription =
-  await SubscriptionService().hasActiveSubscription();
-  if (hasActiveSubscription) return true;
-
-  final trialActive = await TrialService.isTrialActive();
-  if (trialActive) return true;
-
-  return false;
-}
-
-// Simplified helper to launch directly to Tao detail
 // Simplified helper to launch directly to Tao detail
 Future<void> _launchToTaoDetail(int taoNumber) async {
   try {
-    print('🔄 DEBUG: Attempting to load Tao data...');
     final taoDataList = await TaoService.loadLocalTaoData();
-    print('✅ DEBUG: Loaded ${taoDataList.length} Tao entries');
 
     if (taoDataList.isEmpty) {
-      print('❌ DEBUG: taoDataList is EMPTY!');
     } else {
-      print('🔢 DEBUG: First Tao entry: ${taoDataList.first.number} - ${taoDataList.first.title}');
     }
 
     final taoData = taoDataList.firstWhere(
@@ -117,17 +83,13 @@ Future<void> _launchToTaoDetail(int taoNumber) async {
     );
 
     if (taoData.number != 0) {
-      print('🎯 DEBUG: Found Tao $taoNumber - ${taoData.title}');
       _runWithAudio(
         MyApp(showWelcome: false, initialTao: taoData),
       );
     } else {
-      print('❌ DEBUG: Could not find Tao $taoNumber in the list');
       _runWithAudio(const MyApp(showWelcome: false));
     }
   } catch (e) {
-    print('❌ DEBUG: Error in _launchToTaoDetail: $e');
-    print('❌ DEBUG: Error type: ${e.runtimeType}');
     _runWithAudio(const MyApp(showWelcome: false));
   }
 }

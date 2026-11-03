@@ -1,9 +1,39 @@
 // lib/services/subscription_service.dart
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
+import 'package:in_app_purchase_storekit/store_kit_2_wrappers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'trial_service.dart';
+
+/// What the paywall should show and buy. Trial details come only from the
+/// store, so the app never advertises a trial this user cannot receive.
+class SubscriptionOffer {
+  final ProductDetails product;
+  final String recurringPrice;
+
+  /// For example "3-day". Null when the store reports no free trial.
+  final String? freeTrialLabel;
+
+  const SubscriptionOffer({
+    required this.product,
+    required this.recurringPrice,
+    this.freeTrialLabel,
+  });
+}
+
+class PurchaseOutcome {
+  final PurchaseStatus status;
+  final String? message;
+
+  const PurchaseOutcome(this.status, [this.message]);
+
+  bool get grantsAccess =>
+      status == PurchaseStatus.purchased || status == PurchaseStatus.restored;
+}
 
 class SubscriptionService {
   // --- Singleton ---
@@ -12,10 +42,14 @@ class SubscriptionService {
   SubscriptionService._internal();
 
   // Your product ID (Play Console / App Store Connect)
-  static const String _subscriptionId = 'tao_subscription_monthly';
+  static const String subscriptionId = 'tao_subscription_monthly';
 
   // Local entitlement cache flag
   static const String _entitledKey = 'entitled_premium';
+
+  // Limits for store calls, so a stuck connection cannot hold up app launch.
+  static const Duration _storeTimeout = Duration(seconds: 6);
+  static const Duration _restoreSettle = Duration(milliseconds: 1500);
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
 
@@ -26,40 +60,42 @@ class SubscriptionService {
   final List<PurchaseDetails> _purchases = [];
 
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
+  Completer<void>? _entitlementArrived;
 
-  // Public getter for UI
-  List<ProductDetails> getProducts() => List.unmodifiable(_products);
+  final StreamController<PurchaseOutcome> _outcomes =
+      StreamController<PurchaseOutcome>.broadcast();
+
+  /// Purchase results as the store reports them. The paywall listens to this
+  /// rather than polling for a result.
+  Stream<PurchaseOutcome> get outcomes => _outcomes.stream;
 
   // ---------------------------------------------------------------------------
   // Initialization
   // ---------------------------------------------------------------------------
   Future<void> initialize() async {
     if (_initialized) return;
+    _initialized = true;
 
     try {
-      _isAvailable = await _inAppPurchase.isAvailable();
-      if (!_isAvailable) {
-        debugPrint('❌ In-app purchases not available');
-        _initialized = true; // avoid re-trying endlessly
-        return;
-      }
-      debugPrint('✅ In-app purchases available');
-
-      // Attach the purchase update listener once
+      // Attach before any store call so no purchase update is missed.
       _purchaseSub ??= _inAppPurchase.purchaseStream.listen(
         _handlePurchaseUpdate,
-        onDone: () => debugPrint('🎧 Purchase stream closed'),
-        onError: (error) => debugPrint('❌ Purchase stream error: $error'),
+        onDone: () => debugPrint('Purchase stream closed'),
+        onError: (Object error) => debugPrint('Purchase stream error: $error'),
       );
 
-      await _loadProducts();
-      // On init, try to restore known entitlements
-      await refreshPurchases();
+      _isAvailable =
+          await _inAppPurchase.isAvailable().timeout(_storeTimeout);
+      if (!_isAvailable) {
+        debugPrint('In-app purchases not available');
+        _initialized = false; // allow a retry from the paywall
+        return;
+      }
 
-      _initialized = true;
+      await _loadProducts();
     } catch (e) {
-      debugPrint('❌ Subscription service initialization failed: $e');
-      _initialized = true;
+      debugPrint('Subscription service initialization failed: $e');
+      _initialized = false; // allow a retry from the paywall
     }
   }
 
@@ -72,92 +108,174 @@ class SubscriptionService {
   // ---------------------------------------------------------------------------
   Future<void> _loadProducts() async {
     try {
-      final response =
-      await _inAppPurchase.queryProductDetails({_subscriptionId});
+      final response = await _inAppPurchase
+          .queryProductDetails({subscriptionId}).timeout(_storeTimeout);
 
       if (response.notFoundIDs.isNotEmpty) {
-        debugPrint('❌ Product not found: ${response.notFoundIDs}');
+        debugPrint('Product not found: ${response.notFoundIDs}');
       }
       _products = response.productDetails;
-      debugPrint('Loaded products: ${_products.length}');
-      for (final p in _products) {
-        debugPrint('Product: ${p.id} | price: ${p.price} | title: ${p.title}');
-      }
+    } catch (e) {
+      debugPrint('Error loading products: $e');
+    }
+  }
 
-      for (final p in _products) {
-        debugPrint('📦 Product: ${p.id} | ${p.title} | ${p.price}');
+  /// The offer to show on the paywall, or null if the store has none.
+  Future<SubscriptionOffer?> loadOffer() async {
+    await initialize();
+    if (!_isAvailable) return null;
+    if (_products.isEmpty) await _loadProducts();
+
+    final matches = _products.where((p) => p.id == subscriptionId).toList();
+    if (matches.isEmpty) return null;
+
+    final playProducts = matches.whereType<GooglePlayProductDetails>().toList();
+    if (playProducts.isNotEmpty) return _playOffer(playProducts);
+
+    final appStoreProducts = matches.whereType<AppStoreProduct2Details>();
+    if (appStoreProducts.isNotEmpty) {
+      return _appStoreOffer(appStoreProducts.first);
+    }
+
+    // iOS 13-14 use the older StoreKit. The App Store purchase sheet still
+    // shows any trial, so the paywall simply makes no trial claim here.
+    return SubscriptionOffer(
+      product: matches.first,
+      recurringPrice: matches.first.price,
+    );
+  }
+
+  /// Play returns one entry per base plan and offer, limited to the offers
+  /// this user qualifies for. The first pricing phase of a trial offer is free,
+  /// so the recurring price is taken from the last phase.
+  SubscriptionOffer _playOffer(List<GooglePlayProductDetails> products) {
+    SubscriptionOfferDetailsWrapper? detailsOf(GooglePlayProductDetails p) {
+      final index = p.subscriptionIndex;
+      final offers = p.productDetails.subscriptionOfferDetails;
+      if (index == null || offers == null || index >= offers.length) {
+        return null;
+      }
+      return offers[index];
+    }
+
+    bool hasFreeTrial(GooglePlayProductDetails p) {
+      final phases = detailsOf(p)?.pricingPhases;
+      return phases != null &&
+          phases.length > 1 &&
+          phases.first.priceAmountMicros == 0;
+    }
+
+    GooglePlayProductDetails chosen = products.first;
+    for (final p in products) {
+      if (detailsOf(p)?.offerId == null) chosen = p; // base plan as the default
+    }
+    for (final p in products) {
+      if (hasFreeTrial(p)) {
+        chosen = p;
+        break;
+      }
+    }
+
+    final phases = detailsOf(chosen)?.pricingPhases;
+    return SubscriptionOffer(
+      product: chosen,
+      recurringPrice: phases?.last.formattedPrice ?? chosen.price,
+      freeTrialLabel: hasFreeTrial(chosen)
+          ? trialLabelFromIso8601(phases!.first.billingPeriod)
+          : null,
+    );
+  }
+
+  Future<SubscriptionOffer> _appStoreOffer(
+    AppStoreProduct2Details product,
+  ) async {
+    String? trialLabel;
+    try {
+      final eligible = await SK2Product.isIntroductoryOfferEligible(product.id)
+          .timeout(_storeTimeout);
+      final offers = product.sk2Product.subscription?.promotionalOffers ??
+          const <SK2SubscriptionOffer>[];
+      if (eligible) {
+        for (final offer in offers) {
+          if (offer.type == SK2SubscriptionOfferType.introductory &&
+              offer.paymentMode == SK2SubscriptionOfferPaymentMode.freeTrial) {
+            trialLabel = _trialLabel(offer.period, offer.periodCount);
+            break;
+          }
+        }
       }
     } catch (e) {
-      debugPrint('❌ Error loading products: $e');
+      debugPrint('Could not read App Store trial details: $e');
+    }
+
+    return SubscriptionOffer(
+      product: product,
+      recurringPrice: product.price,
+      freeTrialLabel: trialLabel,
+    );
+  }
+
+  String? _trialLabel(SK2SubscriptionPeriod period, int periodCount) {
+    final count = period.value * periodCount;
+    switch (period.unit) {
+      case SK2SubscriptionPeriodUnit.day:
+        return '$count-day';
+      case SK2SubscriptionPeriodUnit.week:
+        return '$count-week';
+      case SK2SubscriptionPeriodUnit.month:
+        return '$count-month';
+      case SK2SubscriptionPeriodUnit.year:
+        return '$count-year';
     }
   }
 
   // ---------------------------------------------------------------------------
   // Purchase / Restore
   // ---------------------------------------------------------------------------
-  Future<void> purchaseSubscription() async {
-    try {
-      if (_products.isEmpty) {
-        await _loadProducts();
-      }
-      final product = _products.firstWhere(
-            (p) => p.id == _subscriptionId,
-        orElse: () => throw Exception('Product not found'),
-      );
 
-      final purchaseParam = PurchaseParam(productDetails: product);
-
-      // Subscriptions are purchased with buyNonConsumable in the plugin API
-      await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
-
-      debugPrint('🛒 Purchase initiated for: ${product.title}');
-    } catch (e) {
-      debugPrint('❌ Purchase failed: $e');
-      rethrow;
-    }
+  /// Opens the store purchase sheet. The result arrives through [outcomes].
+  Future<void> purchaseSubscription(SubscriptionOffer offer) async {
+    final started = await _inAppPurchase.buyNonConsumable(
+      purchaseParam: PurchaseParam(productDetails: offer.product),
+    );
+    if (!started) throw Exception('The store could not start the purchase.');
   }
 
   Future<void> restorePurchases() async {
-    try {
-      await _inAppPurchase.restorePurchases();
-      debugPrint('✅ Restore purchases initiated');
-    } catch (e) {
-      debugPrint('❌ Restore failed: $e');
-      rethrow;
-    }
+    await _inAppPurchase.restorePurchases().timeout(_storeTimeout);
   }
-// Add inside SubscriptionService class
 
-  /// Re-sync local entitlement by restoring purchases and recomputing.
-  /// Returns the final entitlement (true/false).
-  Future<bool> syncEntitlement({Duration settle = const Duration(seconds: 1)}) async {
+  /// Re-sync local entitlement from the store and return it. If the store
+  /// cannot be reached, the last known entitlement stands.
+  Future<bool> syncEntitlement({Duration settle = _restoreSettle}) async {
+    await initialize();
+    if (!_isAvailable) return hasActiveSubscription();
+
     try {
-      // Trigger re-emission of known purchases
-      await _inAppPurchase.restorePurchases();
+      _purchases.clear();
+      final arrived = Completer<void>();
+      _entitlementArrived = arrived;
 
-      // Give purchaseStream a moment to deliver updates
-      await Future.delayed(settle);
+      await _inAppPurchase.restorePurchases().timeout(_storeTimeout);
 
-      // Compute entitlement purely from in-memory purchases
-      final entitled = _purchases.any((p) =>
-      p.productID == _subscriptionId &&
-          (p.status == PurchaseStatus.purchased || p.status == PurchaseStatus.restored)
+      // Finish as soon as an active subscription arrives. Otherwise allow the
+      // purchase stream a moment to deliver.
+      await arrived.future.timeout(settle, onTimeout: () {});
+
+      final entitled = _purchases.any(
+        (p) =>
+            p.productID == subscriptionId &&
+            (p.status == PurchaseStatus.purchased ||
+                p.status == PurchaseStatus.restored),
       );
-
-      // Persist the computed truth
       await _persistEntitlement(entitled);
-      debugPrint('🔄 syncEntitlement => $entitled (from ${_purchases.length} purchases)');
       return entitled;
     } catch (e) {
-      debugPrint('❌ syncEntitlement failed: $e');
-      return await hasActiveSubscription(); // fall back to whatever was cached
+      debugPrint('syncEntitlement failed: $e');
+      return hasActiveSubscription();
+    } finally {
+      _entitlementArrived = null;
     }
-  }
-
-  /// Prefer this in code paths where you want a silent refresh of entitlement.
-  Future<void> refreshPurchases() async {
-    // On both iOS and Android, this will re-emit past purchases via purchaseStream
-    await _inAppPurchase.restorePurchases();
   }
 
   // ---------------------------------------------------------------------------
@@ -171,45 +289,28 @@ class SubscriptionService {
 
   Future<void> _handlePurchase(PurchaseDetails purchase) async {
     try {
-      debugPrint('🧾 Purchase update: '
-          'id=${purchase.purchaseID}, '
-          'product=${purchase.productID}, '
-          'status=${purchase.status}, '
-          'pendingComplete=${purchase.pendingCompletePurchase}');
+      final grantsAccess = purchase.productID == subscriptionId &&
+          (purchase.status == PurchaseStatus.purchased ||
+              purchase.status == PurchaseStatus.restored);
 
-      switch (purchase.status) {
-        case PurchaseStatus.purchased:
-        case PurchaseStatus.restored:
-          _upsertPurchase(purchase);
-
-          // Persist entitlement immediately
-          await _persistEntitlement(true);
-          debugPrint('✅ Entitlement granted and cached.');
-
-          // VERY IMPORTANT on Android: acknowledge or Google may refund
-          if (purchase.pendingCompletePurchase) {
-            await _inAppPurchase.completePurchase(purchase);
-            debugPrint('🙏 Purchase acknowledged.');
-          }
-          break;
-
-        case PurchaseStatus.pending:
-          debugPrint('⏳ Purchase pending...');
-          // Do not grant; UI should show "Purchase pending" if you want.
-          break;
-
-        case PurchaseStatus.error:
-          debugPrint('❌ Purchase error: ${purchase.error}');
-          break;
-
-        default:
-          break;
+      if (grantsAccess) {
+        _upsertPurchase(purchase);
+        await _persistEntitlement(true);
+        final arrived = _entitlementArrived;
+        if (arrived != null && !arrived.isCompleted) arrived.complete();
       }
+
+      // Android refunds purchases that are not acknowledged, and iOS keeps
+      // redelivering transactions that are not finished.
+      if (purchase.pendingCompletePurchase) {
+        await _inAppPurchase.completePurchase(purchase);
+      }
+
+      _outcomes.add(PurchaseOutcome(purchase.status, purchase.error?.message));
     } catch (e) {
-      debugPrint('❌ Error in _handlePurchase: $e');
+      debugPrint('Error in _handlePurchase: $e');
     }
   }
-
 
   void _upsertPurchase(PurchaseDetails p) {
     final idx = _purchases.indexWhere((x) => x.purchaseID == p.purchaseID);
@@ -236,3 +337,12 @@ class SubscriptionService {
   }
 }
 
+/// Converts a Play billing period such as "P3D" or "P1W" to "3-day" or
+/// "1-week". Returns null if the period is not in a recognized form.
+@visibleForTesting
+String? trialLabelFromIso8601(String period) {
+  final match = RegExp(r'^P(\d+)([DWMY])$').firstMatch(period);
+  if (match == null) return null;
+  const units = {'D': 'day', 'W': 'week', 'M': 'month', 'Y': 'year'};
+  return '${match.group(1)}-${units[match.group(2)]}';
+}

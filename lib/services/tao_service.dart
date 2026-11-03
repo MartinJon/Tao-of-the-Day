@@ -6,27 +6,10 @@ import '../models/tao_data.dart';
 class TaoService {
   static Future<List<TaoData>> loadLocalTaoData() async {
     try {
-      print('🔄 [CODEMAGIC DEBUG] Loading local Tao data from JSON...');
 
       final String data = await rootBundle.loadString('lib/data/tao_data.json');
-      print('✅ [CODEMAGIC DEBUG] JSON file loaded, length: ${data.length} chars');
-
-      // Check if prompts exist in the raw JSON
-      print('🔍 [CODEMAGIC DEBUG] Checking for prompts in JSON:');
-      print('   "Prompt 1" found: ${data.contains("Prompt 1")}');
-      print('   "Prompt 2" found: ${data.contains("Prompt 2")}');
 
       final List<dynamic> jsonList = jsonDecode(data);
-      print('📊 [CODEMAGIC DEBUG] Total Tao entries: ${jsonList.length}');
-
-      // Check first 3 entries for prompts
-      final checkCount = jsonList.length < 3 ? jsonList.length : 3;
-      for (int i = 0; i < checkCount; i++) {
-        final json = jsonList[i];
-        final hasPrompt1 = (json['Prompt 1']?.toString() ?? '').isNotEmpty;
-        final hasPrompt2 = (json['Prompt 2']?.toString() ?? '').isNotEmpty;
-        print('🎯 [CODEMAGIC DEBUG] Tao ${json['number']}: Prompt1=$hasPrompt1, Prompt2=$hasPrompt2');
-      }
 
       final List<TaoData> taoDataList = [];
 
@@ -37,22 +20,18 @@ class TaoService {
             taoDataList.add(taoData);
           }
         } catch (e) {
-          print('❌ Error parsing Tao entry: $e');
         }
       }
 
       taoDataList.sort((a, b) => a.number.compareTo(b.number));
-      print('✅ Successfully loaded ${taoDataList.length} Tao entries from local JSON');
 
       return taoDataList;
     } catch (e) {
-      print('❌ [CODEMAGIC DEBUG] Error loading Tao data: $e');
       throw Exception('Failed to load Tao data');
     }
   }
 
   static List<TaoData> getFallbackData() {
-    print('🔄 Using comprehensive fallback data');
 
     final List<TaoData> fallbackData = [];
 

@@ -3,13 +3,11 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'pages/subscription_page.dart';
 import 'services/subscription_service.dart';
-import 'services/trial_service.dart';
 
 class _MenuDialogPalette {
   final Color primary;
@@ -33,7 +31,8 @@ class _MenuDialogPalette {
 }
 
 class MenuDialogs {
-  static const String _fallbackAppVersion = '1.0.1+65';
+  static const String _fallbackAppVersion = '1.1.0';
+  static const String privacyPolicyUrl = 'https://www.martinjon.com/tao-app-privacy';
   static final Future<String> _appVersionFuture = _loadAppVersion();
 
   // ---- Subscription helpers -------------------------------------------------
@@ -413,10 +412,12 @@ class MenuDialogs {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context); // Close about dialog
-                      _showDeveloperMenu(context); // Show developer menu
-                    },
+                    onTap: kDebugMode
+                        ? () {
+                            Navigator.pop(context); // Close about dialog
+                            _showDeveloperMenu(context);
+                          }
+                        : null,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -674,7 +675,7 @@ class MenuDialogs {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Last Updated: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
+                  'Last Updated: November 3, 2026',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: isDarkMode ? Colors.white70 : Colors.black87,
@@ -683,7 +684,7 @@ class MenuDialogs {
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () async {
-                    final Uri uri = Uri.parse("https://www.martinjon.com/tao-app-privacy");
+                    final Uri uri = Uri.parse(privacyPolicyUrl);
                     if (!await launchUrl(uri)) {
                       throw Exception('Could not launch URL');
                     }
@@ -723,10 +724,13 @@ class MenuDialogs {
                 const SizedBox(height: 8),
                 Text(
                   '• Daily Selection: We store your daily Tao selection locally on your device to enforce the "one Tao per day" feature\n'
-                      '• App Preferences: Theme preferences and settings are stored locally\n'
-                      '• No Personal Data: We do not collect, store, or transmit any personally identifiable information\n'
+                      '• App Preferences: Settings are stored locally\n'
+                      '• Subscription Status: The app stores whether your subscription is active on your device\n'
+                      '• Payments: Subscriptions and free trials are handled by Apple or Google under their own privacy policies. We do not receive your payment details\n'
+                      '• Audio: Discussions are streamed from Google Cloud Storage, which receives your IP address as part of any web request\n'
+                      '• No Personal Data: We do not collect or store any personally identifiable information\n'
                       '• No Analytics: We do not use analytics or tracking services\n'
-                      '• No Third-Party Sharing: We do not share any data with third parties',
+                      '• No Sale of Data: We do not sell or share data for advertising',
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
@@ -742,7 +746,9 @@ class MenuDialogs {
                   'This app uses local storage (SharedPreferences) to remember:\n'
                       '• Your selected Tao number for the current day\n'
                       '• The date of your last selection\n'
-                      '• Your theme preference (light/dark mode)',
+                      '• The chapters you have already selected\n'
+                      '• Whether you have seen the welcome message\n'
+                      '• Whether your subscription is active',
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
@@ -857,6 +863,23 @@ class MenuDialogs {
                       '• Respect the daily limitation feature\n'
                       '• Do not attempt to reverse engineer or modify the app\n'
                       '• Use audio content for personal educational purposes only',
+                  style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Subscriptions',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white70 : Colors.black87),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tao of the Day Premium is an auto-renewing monthly subscription sold through the App Store or Google Play. '
+                      'The price and any free trial are shown before you confirm. '
+                      'Payment is charged to your store account at the end of any free trial, or at confirmation if there is no trial. '
+                      'The subscription renews each month unless canceled at least 24 hours before the end of the current period. '
+                      'You can manage or cancel it in your store account settings. '
+                      'Refunds are handled by Apple or Google under their policies.',
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
                 const SizedBox(height: 16),
@@ -989,7 +1012,8 @@ class MenuDialogs {
                 const SizedBox(height: 8),
                 Text(
                   '• Tao content: Loaded from a bundled JSON file on your device\n'
-                      '• Audio files: Streamed from external hosting services\n'
+                      '• Audio files: Streamed from Google Cloud Storage\n'
+                      '• Subscriptions: Managed by Apple or Google\n'
                       '• No analytics or tracking',
                   style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
                 ),
@@ -1119,17 +1143,6 @@ class MenuDialogs {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.delete, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
-              title: const Text('Reset Trial'),
-              onTap: () {
-                TrialService.resetTrial();
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Trial reset')),
-                );
-              },
-            ),
-            ListTile(
               leading: Icon(Icons.visibility, color: isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00)),
               title: const Text('Check Subscription Status'),
               onTap: () async {
@@ -1156,10 +1169,7 @@ class MenuDialogs {
 
   static void _checkSubscriptionStatus(BuildContext context) async {
     await _subs.initialize();
-    final hasAccess = await _subs.hasActiveSubscription();
     final isSubscribed = await _subs.hasActiveSubscription();
-    final inTrial = await TrialService.isTrialActive();
-    final daysRemaining = await TrialService.getDaysRemaining();
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -1171,10 +1181,7 @@ class MenuDialogs {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Has Access: $hasAccess'),
             Text('Is Subscribed: $isSubscribed'),
-            Text('In Trial: $inTrial'),
-            Text('Days Remaining: $daysRemaining'),
           ],
         ),
         actions: [
