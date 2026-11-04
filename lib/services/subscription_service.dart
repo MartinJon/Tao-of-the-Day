@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:in_app_purchase_storekit/store_kit_2_wrappers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,7 +49,7 @@ class SubscriptionService {
   static const String _entitledKey = 'entitled_premium';
 
   // Limits for store calls, so a stuck connection cannot hold up app launch.
-  static const Duration _storeTimeout = Duration(seconds: 6);
+  static const Duration _storeTimeout = Duration(seconds: 12);
   static const Duration _restoreSettle = Duration(milliseconds: 1500);
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
@@ -57,6 +58,9 @@ class SubscriptionService {
   bool _initialized = false;
 
   List<ProductDetails> _products = [];
+
+  /// Why the store returned no subscription, for display on the paywall.
+  String? storeIssue;
   final List<PurchaseDetails> _purchases = [];
 
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
@@ -111,20 +115,64 @@ class SubscriptionService {
       final response = await _inAppPurchase
           .queryProductDetails({subscriptionId}).timeout(_storeTimeout);
 
-      if (response.notFoundIDs.isNotEmpty) {
-        debugPrint('Product not found: ${response.notFoundIDs}');
-      }
       _products = response.productDetails;
+      storeIssue =
+          _products.isEmpty ? await _describeMissingProduct(response) : null;
     } catch (e) {
+      storeIssue = 'Store request failed: $e';
       debugPrint('Error loading products: $e');
     }
+  }
+
+  /// The plugin drops Play's response code when a product comes back empty,
+  /// so ask Play again directly and report what it says.
+  Future<String> _describeMissingProduct(ProductDetailsResponse response) async {
+    final details = <String>[];
+    if (!_isAvailable) details.add('billing not ready');
+    final error = response.error;
+    if (error != null) details.add('${error.code}: ${error.message}');
+
+    final platform = InAppPurchasePlatform.instance;
+    if (platform is InAppPurchaseAndroidPlatform) {
+      try {
+        final result = await platform.billingClientManager
+            .runWithClient(
+              (client) => client.queryProductDetails(
+                productList: const [
+                  ProductWrapper(
+                    productId: subscriptionId,
+                    productType: ProductType.subs,
+                  ),
+                ],
+              ),
+            )
+            .timeout(_storeTimeout);
+        final billing = result.billingResult;
+        details.add(
+          'Play ${billing.responseCode.name}'
+          '${billing.debugMessage == null ? '' : ' (${billing.debugMessage})'}, '
+          'found ${result.productDetailsList.length}, '
+          'unfetched ${result.unfetchedProductList.length}',
+        );
+      } catch (e) {
+        details.add('Play query failed: $e');
+      }
+    }
+
+    return details.isEmpty ? 'No product returned' : details.join('; ');
   }
 
   /// The offer to show on the paywall, or null if the store has none.
   Future<SubscriptionOffer?> loadOffer() async {
     await initialize();
-    if (!_isAvailable) return null;
-    if (_products.isEmpty) await _loadProducts();
+
+    // Play can briefly return nothing, so retry before giving up.
+    for (var attempt = 1; _products.isEmpty && attempt <= 3; attempt++) {
+      await _loadProducts();
+      if (_products.isEmpty && attempt < 3) {
+        await Future<void>.delayed(Duration(seconds: attempt));
+      }
+    }
 
     final matches = _products.where((p) => p.id == subscriptionId).toList();
     if (matches.isEmpty) return null;

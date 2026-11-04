@@ -188,8 +188,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   String get _priceSummary {
     final offer = _offer;
     if (offer == null) {
-      return 'Subscription details are unavailable right now. Check your '
-          'connection and try again.';
+      return 'Subscription details are unavailable right now. Please try again.';
     }
     final trial = offer.freeTrialLabel;
     if (trial != null) {
@@ -274,6 +273,19 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                 ),
               ),
             ),
+            if (!_isLoading &&
+                _offer == null &&
+                _subscriptionService.storeIssue != null) ...[
+              const SizedBox(height: 12),
+              SelectableText(
+                _subscriptionService.storeIssue!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white60 : Colors.black54,
+                  fontSize: 12,
+                ),
+              ),
+            ],
             const SizedBox(height: 30),
 
             // Subscribe / Manage button
