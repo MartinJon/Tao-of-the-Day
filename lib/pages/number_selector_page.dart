@@ -374,9 +374,35 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
   Future<void> _checkDailySelection() async {
     final canSelectNew = await _canSelectNewNumber();
+    if (!mounted) return;
     setState(() {
       _isButtonEnabled = canSelectNew;
     });
+    if (!canSelectNew) await _openTodaysTao();
+  }
+
+  /// Once today's chapter is chosen, it is the app's home for the day. The
+  /// paywall and welcome flows land on this page, so the check lives here.
+  Future<void> _openTodaysTao() async {
+    final number = await StorageService.getLastSelectedNumber();
+    if (number <= 0) return;
+
+    final TaoData taoData;
+    try {
+      final taoDataList = await TaoService.loadLocalTaoData();
+      taoData = taoDataList.firstWhere(
+        (data) => data.number == number,
+        orElse: () => TaoData.empty(),
+      );
+    } catch (_) {
+      return; // Stay on this page, which explains the daily limit.
+    }
+
+    if (!mounted || taoData.number == 0) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => TaoDetailPage(taoData: taoData)),
+      (_) => false,
+    );
   }
 
   // Add these helper methods to NumberSelectorPage:
