@@ -63,6 +63,15 @@ class StorageService {
     return lastSelectedDate != currentDeviceDate;
   }
 
+  /// A new user's first chapter is free, including for the rest of that day.
+  /// Resetting the Tao journey does not clear the date, so this happens once.
+  static Future<bool> isFreeChapterAvailable() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastSelectedDate = prefs.getString('selectedNumberDate') ?? '';
+    final currentDeviceDate = DateFormat('yyyyMMdd').format(DateTime.now());
+    return lastSelectedDate.isEmpty || lastSelectedDate == currentDeviceDate;
+  }
+
   static Future<void> saveDailySelection(int number) async {
     final prefs = await SharedPreferences.getInstance();
 

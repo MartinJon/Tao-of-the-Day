@@ -39,14 +39,17 @@ Publish the Terms at a URL for the store listings.
 ## 5. Notes for app review
 Paste this into the App Store review notes and Play's app access section:
 
-> The app opens on a subscription screen. Subscribing starts a 3-day free trial through the store.
-> A sandbox or license-test account can complete the purchase, and no app account is needed.
-> Restore Purchases is on the same screen.
+> A new user's first chapter is free. To reach the subscription screen on the first day, open the
+> top-right menu and choose Go Premium. From the next day, the app opens on that screen.
+> Subscribing starts a 3-day free trial through the store. A sandbox or license-test account can
+> complete the purchase, and no app account is needed. Restore Purchases is on the same screen.
 
 Add license testers in Play Console > Settings > License testing.
 
 ## 6. Test on real devices
-- New user: paywall shows the 3-day trial and price, purchase enters the app with the welcome message.
+- New user: the app opens without a paywall, and the first chapter opens in full.
+- Reopen the same day: the same chapter opens.
+- Next day, or with the phone's date moved forward: the paywall shows the 3-day trial and price, and purchase enters the app.
 - Cancel the purchase sheet: the spinner stops and no error appears.
 - Restore on a second device or after reinstalling.
 - Expire a test subscription: the next launch shows the paywall.

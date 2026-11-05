@@ -25,7 +25,8 @@ void main() async {
   // Store-managed subscription is the only gate. initialize() and
   // syncEntitlement() handle their own errors, so launch never stops here.
   await SubscriptionService.ensureInitialized();
-  final bool canAccessApp = await SubscriptionService().syncEntitlement();
+  final bool canAccessApp = await SubscriptionService().syncEntitlement() ||
+      await StorageService.isFreeChapterAvailable();
 
   if (!canAccessApp) {
     _runWithAudio(

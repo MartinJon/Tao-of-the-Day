@@ -234,7 +234,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     final hasSubscription = await _checkSubscription();
     final canSelectNew = await _canSelectNewNumber();
 
-    if (!hasSubscription) {
+    if (!hasSubscription && !await StorageService.isFreeChapterAvailable()) {
       _showSubscriptionPrompt();
       return;
     }
@@ -293,8 +293,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Your subscription is no longer active. '
-                    'Subscribe to Tao of the Day Premium to continue your journey '
+                'Subscribe to Tao of the Day Premium to continue your journey '
                     'with a new chapter each day.',
                 textAlign: TextAlign.center,
               ),
