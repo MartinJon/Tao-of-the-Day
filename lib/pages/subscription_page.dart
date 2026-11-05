@@ -222,7 +222,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         backgroundColor:
             isDarkMode ? const Color(0xFF5C1A00) : const Color(0xFF7E1A00),
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: false, // the AppBar handles the top inset
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -347,6 +349,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

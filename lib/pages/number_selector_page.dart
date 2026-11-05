@@ -452,9 +452,12 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           MenuDialogs.buildMenuButton(context),
         ],
       ),
-      body: Padding(
+      body: SafeArea(
+        top: false, // the AppBar handles the top inset
+        child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: _buildMainContent(isDarkMode),
+      ),
       ),
     );
   }

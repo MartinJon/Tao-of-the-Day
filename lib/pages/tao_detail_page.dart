@@ -152,7 +152,9 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
             MenuDialogs.buildMenuButton(context),
           ],
         ),
-        body: SingleChildScrollView(
+        body: SafeArea(
+        top: false, // the AppBar handles the top inset
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,6 +275,7 @@ class _TaoDetailPageState extends State<TaoDetailPage> with WidgetsBindingObserv
             ],
           ),
         ),
+      ),
       ),
     );
   }
