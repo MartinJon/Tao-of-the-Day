@@ -41,8 +41,12 @@ Paste this into the App Store review notes and Play's app access section:
 
 > A new user's first chapter is free. To reach the subscription screen on the first day, open the
 > top-right menu and choose Go Premium. From the next day, the app opens on that screen.
-> Subscribing starts a 3-day free trial through the store. A sandbox or license-test account can
-> complete the purchase, and no app account is needed. Restore Purchases is on the same screen.
+> Subscribing starts a 3-day free trial through the store. Restore Purchases is on the same screen.
+> No app account is needed. Google Play reviewers can unlock the app without payment: on that
+> screen, tap Access Code and enter the code in the Sign in details declaration. One new chapter
+> a day is the app's intended design, including with the code.
+>
+> Keep the code only in Play Console. The repository stores just its hash.
 
 Add license testers in Play Console > Settings > License testing.
 

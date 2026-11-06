@@ -1,6 +1,8 @@
 // lib/services/subscription_service.dart
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
@@ -47,6 +49,13 @@ class SubscriptionService {
 
   // Local entitlement cache flag
   static const String _entitledKey = 'entitled_premium';
+
+  // Access for Google Play reviewers, who cannot make purchases. Only a hash
+  // lives here because this repository is public. The code itself is in the
+  // Play Console Sign in details declaration.
+  static const String _reviewerAccessKey = 'reviewer_access';
+  static const String _reviewerCodeHash =
+      'a8c77c86ed43a6d26cdd87cc862c2e75abd070e0d2b40eeb9daa51ad8f58bb24';
 
   // Limits for store calls, so a stuck connection cannot hold up app launch.
   static const Duration _storeTimeout = Duration(seconds: 12);
@@ -289,6 +298,17 @@ class SubscriptionService {
     if (!started) throw Exception('The store could not start the purchase.');
   }
 
+  /// Unlocks the app on this device if [code] is the reviewer access code.
+  Future<bool> redeemAccessCode(String code) async {
+    final normalized = code.trim().toUpperCase();
+    final hash = sha256.convert(utf8.encode(normalized)).toString();
+    if (hash != _reviewerCodeHash) return false;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_reviewerAccessKey, true);
+    return true;
+  }
+
   Future<void> restorePurchases() async {
     await _inAppPurchase.restorePurchases().timeout(_storeTimeout);
   }
@@ -317,7 +337,7 @@ class SubscriptionService {
                 p.status == PurchaseStatus.restored),
       );
       await _persistEntitlement(entitled);
-      return entitled;
+      return hasActiveSubscription();
     } catch (e) {
       debugPrint('syncEntitlement failed: $e');
       return hasActiveSubscription();
@@ -377,7 +397,8 @@ class SubscriptionService {
   Future<bool> hasActiveSubscription() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(_entitledKey) ?? false;
+      return (prefs.getBool(_entitledKey) ?? false) ||
+          (prefs.getBool(_reviewerAccessKey) ?? false);
     } catch (e) {
       debugPrint('Error checking subscription: $e');
       return false;

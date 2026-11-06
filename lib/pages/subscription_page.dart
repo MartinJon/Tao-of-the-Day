@@ -153,6 +153,42 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     }
   }
 
+  Future<void> _handleAccessCode() async {
+    final controller = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter access code'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(hintText: 'Access code'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (code == null || !mounted) return;
+    final accepted = await _subscriptionService.redeemAccessCode(code);
+    if (!mounted) return;
+    if (accepted) {
+      _enterApp();
+    } else {
+      _showMessage('Enter access code', 'That code is not valid.');
+    }
+  }
+
   void _openManageSubscription() {
     final url = Platform.isIOS
         ? 'https://apps.apple.com/account/subscriptions'
@@ -345,6 +381,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                   ),
                   child: const Text('Privacy Policy'),
                 ),
+                if (Platform.isAndroid)
+                  TextButton(
+                    onPressed: _handleAccessCode,
+                    child: const Text('Access Code'),
+                  ),
               ],
             ),
           ],

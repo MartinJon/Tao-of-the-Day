@@ -3,7 +3,7 @@ description: "Tao of the Day App"
 
 publish_to: 'none'
 
-version: 1.1.0+84
+version: 1.1.0+85
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -13,6 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
   # 3.3.0 brings Play Billing Library 8, which Google Play now requires.
+  crypto: ^3.0.6
   in_app_purchase: ^3.3.0
   in_app_purchase_android: ^0.5.0
   in_app_purchase_platform_interface: ^1.4.0
