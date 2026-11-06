@@ -1,12 +1,16 @@
 // lib/pages/subscription_page.dart
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../menu_dialogs.dart';
+import '../services/storage_service.dart';
 import '../services/subscription_service.dart';
-import '../services/trial_service.dart';
+import '../welcome_wrapper.dart';
+import 'number_selector_page.dart';
 
 class SubscriptionPage extends StatefulWidget {
   const SubscriptionPage({super.key});
@@ -17,9 +21,13 @@ class SubscriptionPage extends StatefulWidget {
 
 class _SubscriptionPageState extends State<SubscriptionPage> {
   final SubscriptionService _subscriptionService = SubscriptionService();
-  bool _isLoading = false;
+  StreamSubscription<PurchaseOutcome>? _outcomeSub;
+
+  bool _isLoading = true;
   bool _isEntitled = false;
-  ProductDetails? _premiumProduct;
+  bool _openedEntitled = false;
+  bool _leaving = false;
+  SubscriptionOffer? _offer;
 
   @override
   void initState() {
@@ -27,106 +35,159 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     _init();
   }
 
-  Future<void> _init() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _outcomeSub?.cancel();
+    super.dispose();
+  }
 
-    // Make sure IAP is ready
+  Future<void> _init() async {
     await _subscriptionService.initialize();
 
-    // 🔄 Pull latest truth from the store and cache it
-    await _subscriptionService.syncEntitlement();
+    _openedEntitled = await _subscriptionService.hasActiveSubscription();
+    _outcomeSub ??= _subscriptionService.outcomes.listen(_onOutcome);
 
-    // Read the cached truth (fast)
-    final entitled = await _subscriptionService.hasActiveSubscription();
+    final entitled = await _subscriptionService.syncEntitlement();
+    final offer = await _subscriptionService.loadOffer();
 
-    // Get products AFTER initialize
-    List<ProductDetails> products = _subscriptionService.getProducts();
-
-    // Optional: tiny retry in case the list was still empty on first frame
-    if (products.isEmpty) {
-      await Future.delayed(const Duration(milliseconds: 200));
-      products = _subscriptionService.getProducts();
-    }
-
-    // Pick your product (safe)
-    ProductDetails? chosen;
-    try {
-      chosen = products.firstWhere((p) => p.id == 'tao_subscription_monthly');
-    } catch (_) {
-      if (products.isNotEmpty) chosen = products.first;
-    }
-
+    if (!mounted || _leaving) return;
     setState(() {
       _isEntitled = entitled;
-      _premiumProduct = chosen;
+      _offer = offer;
       _isLoading = false;
     });
   }
 
+  void _onOutcome(PurchaseOutcome outcome) {
+    if (!mounted || _leaving) return;
 
-  Future<bool> _waitForEntitlement({Duration timeout = const Duration(seconds: 20)}) async {
-    final start = DateTime.now();
-    while (DateTime.now().difference(start) < timeout) {
-      final ok = await _subscriptionService.hasActiveSubscription();
-      if (ok) return true;
-      await Future.delayed(const Duration(milliseconds: 500));
+    if (outcome.grantsAccess) {
+      if (!_openedEntitled) _enterApp();
+      return;
     }
-    return false;
+
+    switch (outcome.status) {
+      case PurchaseStatus.pending:
+        setState(() => _isLoading = false);
+        _showMessage(
+          'Purchase pending',
+          'Your purchase is waiting for confirmation from the store. '
+              'Premium will unlock when it completes.',
+        );
+        break;
+      case PurchaseStatus.canceled:
+        setState(() => _isLoading = false);
+        break;
+      case PurchaseStatus.error:
+        setState(() => _isLoading = false);
+        _showMessage(
+          'Purchase failed',
+          outcome.message ?? 'The store could not complete the purchase.',
+        );
+        break;
+      case PurchaseStatus.purchased:
+      case PurchaseStatus.restored:
+        break;
+    }
   }
 
+  /// This page can be the app's first screen, with nothing beneath it to
+  /// return to, so it replaces itself in that case.
+  Future<void> _enterApp() async {
+    if (_leaving) return;
+    _leaving = true;
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+
+    final hasSeenWelcome = await StorageService.shouldShowWelcome();
+    navigator.pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => hasSeenWelcome
+            ? const NumberSelectorPage()
+            : const WelcomeWrapper(child: NumberSelectorPage()),
+      ),
+    );
+  }
 
   Future<void> _handleSubscribe() async {
     if (_isEntitled) {
       _openManageSubscription();
       return;
     }
+
+    final offer = _offer;
+    if (offer == null) {
+      setState(() => _isLoading = true);
+      await _init();
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      await _subscriptionService.purchaseSubscription();
-
-      // Nudge the store to emit purchases and then wait for listener to grant
-      await _subscriptionService.syncEntitlement();
-      final gotEntitlement = await _waitForEntitlement();
-
-      if (gotEntitlement && mounted) {
-        Navigator.pop(context); // success — leave paywall
-        return;
-      }
-
-      // If we’re here, it’s pending / slow propagation — be gentle
-      _showErrorDialog(
-        'Your purchase is being processed. If Premium doesn’t unlock shortly, tap “Restore Purchases.”',
-      );
+      await _subscriptionService.purchaseSubscription(offer);
+      // The spinner stays on until a result arrives in _onOutcome.
     } catch (e) {
-      if (mounted) _showErrorDialog('Subscription failed: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showMessage('Purchase failed', '$e');
     }
   }
-
-
 
   Future<void> _handleRestore() async {
     setState(() => _isLoading = true);
-    try {
-      await _subscriptionService.restorePurchases();
+    final hasAccess = await _subscriptionService.syncEntitlement();
 
-      // Recompute entitlement from what the store returned
-      await _subscriptionService.syncEntitlement();
-
-      final hasAccess = await _subscriptionService.hasActiveSubscription();
-      if (hasAccess && mounted) {
-        Navigator.pop(context);
-      } else if (mounted) {
-        _showErrorDialog('No active subscription found.');
-      }
-    } catch (e) {
-      if (mounted) _showErrorDialog('Restore failed: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    if (!mounted || _leaving) return;
+    setState(() {
+      _isEntitled = hasAccess;
+      _isLoading = false;
+    });
+    if (hasAccess) {
+      _enterApp();
+    } else {
+      _showMessage('Restore Purchases', 'No active subscription found.');
     }
   }
 
+  Future<void> _handleAccessCode() async {
+    final controller = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter access code'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(hintText: 'Access code'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (code == null || !mounted) return;
+    final accepted = await _subscriptionService.redeemAccessCode(code);
+    if (!mounted) return;
+    if (accepted) {
+      _enterApp();
+    } else {
+      _showMessage('Enter access code', 'That code is not valid.');
+    }
+  }
 
   void _openManageSubscription() {
     final url = Platform.isIOS
@@ -135,11 +196,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
-  void _showErrorDialog(String message) {
+  void _showMessage(String title, String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
+        title: Text(title),
         content: Text(message),
         actions: [
           TextButton(
@@ -151,191 +212,118 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     );
   }
 
+  String get _buttonLabel {
+    if (_isEntitled) return 'MANAGE SUBSCRIPTION';
+    final offer = _offer;
+    if (offer == null) return 'TRY AGAIN';
+    final trial = offer.freeTrialLabel;
+    if (trial != null) return 'START ${trial.toUpperCase()} FREE TRIAL';
+    return 'SUBSCRIBE FOR ${offer.recurringPrice}/MONTH';
+  }
+
+  String get _priceSummary {
+    final offer = _offer;
+    if (offer == null) {
+      return 'Subscription details are unavailable right now. Please try again.';
+    }
+    final trial = offer.freeTrialLabel;
+    if (trial != null) {
+      return '$trial free trial, then ${offer.recurringPrice}/month';
+    }
+    return '${offer.recurringPrice}/month';
+  }
+
+  String get _legalText {
+    final store = Platform.isIOS ? 'Apple Account' : 'Google Play account';
+    final trial = _offer?.freeTrialLabel;
+    final chargeTiming = trial != null
+        ? 'Payment is charged to your $store when the free trial ends, unless '
+            'you cancel at least 24 hours before it ends.'
+        : 'Payment is charged to your $store when you confirm the purchase.';
+    return '$chargeTiming The subscription renews automatically each month at '
+        'the price shown unless canceled at least 24 hours before the end of '
+        'the current period. Manage or cancel it at any time in your $store '
+        'settings.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final accent =
+        isDarkMode ? const Color(0xFFD45C33) : const Color(0xFF7E1A00);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tao of the Day Premium'),
         backgroundColor:
-        isDarkMode ? const Color(0xFF5C1A00) : const Color(0xFF7E1A00),
+            isDarkMode ? const Color(0xFF5C1A00) : const Color(0xFF7E1A00),
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: false, // the AppBar handles the top inset
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.spa,
-                size: 80,
-                color: isDarkMode
-                    ? const Color(0xFFD45C33)
-                    : const Color(0xFF7E1A00)),
+            Icon(Icons.spa, size: 80, color: accent),
             const SizedBox(height: 20),
-            Text('Tao of the Day Premium',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: isDarkMode
-                      ? const Color(0xFFD45C33)
-                      : const Color(0xFF7E1A00),
-                  fontWeight: FontWeight.bold,
-                )),
+            Text(
+              'Tao of the Day Premium',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
             const SizedBox(height: 10),
-            Text('Continue your Tao journey beyond the trial',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black87,
-                    fontSize: 16)),
+            Text(
+              'One chapter of the Tao Te Ching each day',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white70 : Colors.black87,
+                fontSize: 16,
+              ),
+            ),
             const SizedBox(height: 30),
 
-            // Trial badge
-            FutureBuilder<bool>(
-              future: TrialService.isTrialActive(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox.shrink();
-                }
-                if (snapshot.data == true) {
-                  return FutureBuilder<int>(
-                    future: TrialService.getDaysRemaining(),
-                    builder: (context, daysSnapshot) {
-                      final daysRemaining = daysSnapshot.data ?? 0;
-                      return Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.green),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.celebration,
-                                    size: 40, color: Colors.green),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'You\'re in your Free Trial!',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  daysRemaining > 1
-                                      ? '$daysRemaining days remaining in your trial'
-                                      : 'Last day of your free trial',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: isDarkMode
-                                        ? Colors.white70
-                                        : Colors.black87,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: (isDarkMode
-                                  ? const Color(0xFFD45C33)
-                                  : const Color(0xFF7E1A00))
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isDarkMode
-                                    ? const Color(0xFFD45C33)
-                                    : const Color(0xFF7E1A00),
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Upgrade to Premium Now',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDarkMode
-                                        ? const Color(0xFFD45C33)
-                                        : const Color(0xFF7E1A00),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Subscribe today and your payment will start after the trial ends',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: isDarkMode
-                                        ? Colors.white70
-                                        : Colors.black87,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                      );
-                    },
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-
             // Features
-            _buildFeature('3-Day Free Trial', 'Try everything free for 3 days'),
-            _buildFeature(
-                'Continued Tao Access', 'Continue to explore Tao daily'),
-            _buildFeature('Ad-Free Experience', 'Focus on your contemplation'),
-            _buildFeature('Offline Listening',
-                'Download discussions for offline use'),
+            _buildFeature('All 81 Chapters', 'Choose a chapter or let chance decide'),
+            _buildFeature('Audio Discussions', 'Listen to discussions of each chapter'),
+            _buildFeature('Notes and Prompts', 'Contemplation notes and questions for each chapter'),
             const SizedBox(height: 30),
 
             // Pricing
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: (isDarkMode
-                    ? const Color(0xFFD45C33)
-                    : const Color(0xFF7E1A00))
-                    .withOpacity(0.1),
+                color: accent.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDarkMode
-                      ? const Color(0xFFD45C33)
-                      : const Color(0xFF7E1A00),
+                border: Border.all(color: accent),
+              ),
+              child: Text(
+                _isLoading && _offer == null ? 'Loading price…' : _priceSummary,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: accent,
                 ),
               ),
-              child: Column(
-                children: [
-                  Text(
-                    _premiumProduct != null
-                        ? 'Then ${_premiumProduct!.price}/month'
-                        : 'Loading price…',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode
-                          ? const Color(0xFFD45C33)
-                          : const Color(0xFF7E1A00),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Cancel anytime during trial',
-                    style: TextStyle(
-                      color:
-                      isDarkMode ? Colors.white70 : Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
             ),
+            if (!_isLoading &&
+                _offer == null &&
+                _subscriptionService.storeIssue != null) ...[
+              const SizedBox(height: 12),
+              SelectableText(
+                _subscriptionService.storeIssue!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white60 : Colors.black54,
+                  fontSize: 12,
+                ),
+              ),
+            ],
             const SizedBox(height: 30),
 
             // Subscribe / Manage button
@@ -344,27 +332,23 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleSubscribe,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isDarkMode
-                      ? const Color(0xFFD45C33)
-                      : const Color(0xFF7E1A00),
+                  backgroundColor: accent,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
-                  _isEntitled
-                      ? 'MANAGE SUBSCRIPTION'
-                      : 'SUBSCRIBE${_premiumProduct != null ? ' FOR ${_premiumProduct!.price}/MONTH' : ''}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                        _buttonLabel,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 10),
 
-            // Restore Purchases (you asked to keep this — yes!)
             TextButton(
               onPressed: _isLoading ? null : _handleRestore,
               child: const Text('Restore Purchases'),
@@ -373,15 +357,40 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
             // Legal
             Text(
-              'By continuing, you agree to our Terms and Privacy Policy. Payment will be charged to your Store account. Subscription automatically renews unless canceled at least 24 hours before the end of the current period.',
+              _legalText,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDarkMode ? Colors.white60 : Colors.black54,
                 fontSize: 12,
               ),
             ),
+            const SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () =>
+                      MenuDialogs.showTermsOfServiceDialog(context),
+                  child: const Text('Terms of Use'),
+                ),
+                TextButton(
+                  onPressed: () => launchUrl(
+                    Uri.parse(MenuDialogs.privacyPolicyUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  child: const Text('Privacy Policy'),
+                ),
+                if (Platform.isAndroid)
+                  TextButton(
+                    onPressed: _handleAccessCode,
+                    child: const Text('Access Code'),
+                  ),
+              ],
+            ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -9,7 +9,6 @@ import '../services/storage_service.dart';
 import '../services/subscription_service.dart';
 import '../pages/subscription_page.dart';
 import 'dart:math';
-import '../services/trial_service.dart';
 
 class NumberSelectorPage extends StatefulWidget {
   const NumberSelectorPage({super.key});
@@ -67,11 +66,9 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
     for (int attempt = 1; attempt <= retries; attempt++) {
       try {
-        print('🔄 Attempt $attempt of $retries to fetch data...');
         await _fetchTaoData();
         return; // Success - exit the retry loop
       } catch (e) {
-        print('❌ Attempt $attempt failed: $e');
         if (attempt == retries) {
           setState(() {
             _hasError = true;
@@ -79,7 +76,6 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           });
           _showNetworkErrorDialog();
         } else {
-          print('⏳ Waiting ${attempt * 2} seconds before retry...');
           await Future.delayed(Duration(seconds: attempt * 2));
         }
       }
@@ -88,10 +84,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
   Future<void> _fetchTaoData() async {
     try {
-      print('📦 Loading local Tao data from JSON...');
       await _loadLocalTaoData();
     } catch (e) {
-      print('❌ Error loading local data: $e');
       _showFallbackData();
     }
   }
@@ -105,7 +99,6 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
         _hasError = false;
       });
     } catch (e) {
-      print('❌ Error loading local data: $e');
       _showFallbackData();
     }
   }
@@ -241,7 +234,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     final hasSubscription = await _checkSubscription();
     final canSelectNew = await _canSelectNewNumber();
 
-    if (!hasSubscription && !canSelectNew) {
+    if (!hasSubscription && !await StorageService.isFreeChapterAvailable()) {
       _showSubscriptionPrompt();
       return;
     }
@@ -277,8 +270,6 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       _showErrorDialog('No data found for Tao $number.', isRetryable: false);
     }
 
-    print('🔍 DAILY LIMIT DEBUG: canSelectNew = $canSelectNew');
-    print('🔍 DAILY LIMIT DEBUG: number = $number');
   }
 
   void _showSubscriptionPrompt() {
@@ -302,9 +293,8 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                'You\'ve already explored your Tao for today. '
-                    'Subscribe to Tao of the Day Premium to continue your journey '
-                    'and explore new chapters every day.',
+                'Subscribe to Tao of the Day Premium to continue your journey '
+                    'with a new chapter each day.',
                 textAlign: TextAlign.center,
               ),
             ],
@@ -383,16 +373,41 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
 
   Future<void> _checkDailySelection() async {
     final canSelectNew = await _canSelectNewNumber();
+    if (!mounted) return;
     setState(() {
       _isButtonEnabled = canSelectNew;
     });
+    if (!canSelectNew) await _openTodaysTao();
+  }
+
+  /// Once today's chapter is chosen, it is the app's home for the day. The
+  /// paywall and welcome flows land on this page, so the check lives here.
+  Future<void> _openTodaysTao() async {
+    final number = await StorageService.getLastSelectedNumber();
+    if (number <= 0) return;
+
+    final TaoData taoData;
+    try {
+      final taoDataList = await TaoService.loadLocalTaoData();
+      taoData = taoDataList.firstWhere(
+        (data) => data.number == number,
+        orElse: () => TaoData.empty(),
+      );
+    } catch (_) {
+      return; // Stay on this page, which explains the daily limit.
+    }
+
+    if (!mounted || taoData.number == 0) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => TaoDetailPage(taoData: taoData)),
+      (_) => false,
+    );
   }
 
   // Add these helper methods to NumberSelectorPage:
   Future<bool> _checkIfSubscribed() async {
     final subscriptionService = SubscriptionService();
     await subscriptionService.initialize();
-    await subscriptionService.syncEntitlement();       // 🔄 refresh from store
     return subscriptionService.hasActiveSubscription(); // ✅ read cached
   }
 
@@ -424,32 +439,6 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     );
   }
 
-  Widget _buildTrialStatus(int daysRemaining, bool isDarkMode) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      margin: EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Color(0xFFD45C33)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.celebration, size: 16, color: Color(0xFFD45C33)),
-          SizedBox(width: 8),
-          Text(
-            'Free Trial: $daysRemaining days remaining',
-            style: TextStyle(
-              color: Color(0xFFD45C33),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -462,9 +451,12 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
           MenuDialogs.buildMenuButton(context),
         ],
       ),
-      body: Padding(
+      body: SafeArea(
+        top: false, // the AppBar handles the top inset
+        child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: _buildMainContent(isDarkMode),
+      ),
       ),
     );
   }
@@ -498,8 +490,7 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Replace your existing _buildTrialStatusIndicator with this:
-          _buildTrialStatusIndicator(isDarkMode),
+          _buildSubscriptionStatusIndicator(isDarkMode),
           Text(
             'Select a Tao Chapter (1-81):',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -683,32 +674,14 @@ class _NumberSelectorPageState extends State<NumberSelectorPage> {
     );
   }
 
-  // Replace your existing _buildTrialStatusIndicator with this:
-  Widget _buildTrialStatusIndicator(bool isDarkMode) {
+  Widget _buildSubscriptionStatusIndicator(bool isDarkMode) {
     return FutureBuilder<bool>(
       future: _checkIfSubscribed(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return SizedBox();
-        }
-
-        final isSubscribed = snapshot.data ?? false;
-
-        if (isSubscribed) {
-          // User is subscribed - show premium badge
+        if (snapshot.data == true) {
           return _buildPremiumBadge(isDarkMode);
-        } else {
-          // User is not subscribed - check trial status
-          return FutureBuilder<int>(
-            future: TrialService.getDaysRemaining(),
-            builder: (context, trialSnapshot) {
-              if (trialSnapshot.hasData && trialSnapshot.data! > 0) {
-                return _buildTrialStatus(trialSnapshot.data!, isDarkMode);
-              }
-              return SizedBox();
-            },
-          );
         }
+        return const SizedBox();
       },
     );
   }

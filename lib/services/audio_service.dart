@@ -43,8 +43,6 @@ class AudioService with ChangeNotifier {
           category: AVAudioSessionCategory.playback,
           options: {
             AVAudioSessionOptions.mixWithOthers,
-            AVAudioSessionOptions.allowBluetooth,
-            AVAudioSessionOptions.defaultToSpeaker,
           },
         ),
         android: AudioContextAndroid(

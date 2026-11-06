@@ -4,7 +4,7 @@
     environment:
       groups:
         - android_signing
-      flutter: stable
+      flutter: 3.38.10
     scripts:
       - name: Build Android with underscore
         script: |
@@ -29,7 +29,7 @@
       groups:
         - ios_signing
         - app_store_credentials
-      flutter: stable
+      flutter: 3.38.10
       xcode: latest
       cocoapods: default
     scripts:

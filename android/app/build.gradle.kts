@@ -1,7 +1,16 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Local signing values live in android/key.properties, which git ignores.
+// Copy android/key.properties.example to create it.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -21,29 +30,22 @@ android {
     defaultConfig {
         applicationId = "com.martinjon.tao_app"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode.toInt()
         versionName = flutter.versionName
     }
 
     signingConfigs {
         create("release") {
-            // This will work with both local development and CodeMagic
-            if (System.getenv("CM_KEYSTORE") != null) {
-                // CodeMagic environment - file will be created from base64
-                storeFile = file("upload-keystore.jks")
-                storePassword = System.getenv("CM_KEYSTORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("CM_KEY_ALIAS") ?: ""
-                keyPassword = System.getenv("CM_KEY_PASSWORD") ?: ""
-            } else {
-                // Local development
-                storeFile = file("upload-keystore.jks")
-                storePassword = "Tao_of_the_Day"
-                keyAlias = "my-alias"
-                keyPassword = "Tao_of_the_Day"
-            }
+            // CodeMagic supplies environment variables; local builds use key.properties.
+            storeFile = file("upload-keystore.jks")
+            storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                ?: keystoreProperties.getProperty("storePassword")
+            keyAlias = System.getenv("CM_KEY_ALIAS")
+                ?: keystoreProperties.getProperty("keyAlias")
+            keyPassword = System.getenv("CM_KEY_PASSWORD")
+                ?: keystoreProperties.getProperty("keyPassword")
         }
-
     }
 
     buildTypes {
