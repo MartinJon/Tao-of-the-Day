@@ -236,14 +236,16 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   String get _legalText {
     final store = Platform.isIOS ? 'Apple Account' : 'Google Play account';
     final trial = _offer?.freeTrialLabel;
+    // Apple requires cancellation at least 24 hours before renewal. Google
+    // Play allows it any time before the period ends.
+    final deadline = Platform.isIOS ? 'at least 24 hours before' : 'before';
     final chargeTiming = trial != null
         ? 'Payment is charged to your $store when the free trial ends, unless '
-            'you cancel at least 24 hours before it ends.'
+            'you cancel $deadline it ends.'
         : 'Payment is charged to your $store when you confirm the purchase.';
     return '$chargeTiming The subscription renews automatically each month at '
-        'the price shown unless canceled at least 24 hours before the end of '
-        'the current period. Manage or cancel it at any time in your $store '
-        'settings.';
+        'the price shown unless canceled $deadline the end of the current '
+        'period. Manage or cancel it at any time in your $store settings.';
   }
 
   @override

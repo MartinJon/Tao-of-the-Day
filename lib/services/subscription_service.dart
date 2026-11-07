@@ -44,8 +44,12 @@ class SubscriptionService {
   factory SubscriptionService() => _instance;
   SubscriptionService._internal();
 
-  // Your product ID (Play Console / App Store Connect)
-  static const String subscriptionId = 'tao_subscription_monthly';
+  // Product IDs differ by store. Apple reserves IDs permanently, so the
+  // Google ID was not available there.
+  static String get subscriptionId =>
+      defaultTargetPlatform == TargetPlatform.iOS
+          ? 'Tao_Wisdom'
+          : 'tao_subscription_monthly';
 
   // Local entitlement cache flag
   static const String _entitledKey = 'entitled_premium';
@@ -147,7 +151,7 @@ class SubscriptionService {
         final result = await platform.billingClientManager
             .runWithClient(
               (client) => client.queryProductDetails(
-                productList: const [
+                productList: [
                   ProductWrapper(
                     productId: subscriptionId,
                     productType: ProductType.subs,

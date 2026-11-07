@@ -367,7 +367,7 @@ class MenuDialogs {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'The daily selection limitation is intentional - I want to encourages deep reflection on a single teaching rather than superficial reading of many. I hope you take the time to explore the conversations around the chapter you selected',
+                  'The daily selection limitation is intentional - I want to encourage deep reflection on a single teaching rather than superficial reading of many. I hope you take the time to explore the conversations around the chapter you selected.',
                   style: TextStyle(
                     fontStyle: FontStyle.italic,
                     color: isDarkMode ? Colors.white70 : Colors.black87,
